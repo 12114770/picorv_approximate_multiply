@@ -1,0 +1,108 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+
+\title{PicoRV32 Parameter Study on the iCEBreaker Board}
+\author{Lukas Sichert -   12114770}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+This report summarizes an automated parameter sweep for a PicoRV32-based PicoSoC on the iCEBreaker board. For each configuration, the core is synthesized, placed and routed, and then evaluated with the Dhrystone benchmark in simulation and on hardware. The collected metrics are logic and memory resource usage, maximum clock frequency, code size, and DMIPS/MHz.
+
+\section*{Parameters}
+The measured design space contains 16 configurations. The results are organized with the following two varying parameters:
+
+The pair \texttt{(BARREL\_SHIFTER, TWO\_CYCLE\_ALU)} controls two microarchitectural options inside PicoRV32. Enabling the barrel shifter replaces iterative shift logic with a faster combinational shifter, which can improve the execution speed of shift-heavy code at the cost of additional area. Enabling the two-cycle ALU allows selected ALU operations to take two cycles instead of one, which can ease timing closure but may reduce performance.
+
+\begin{itemize}
+	\item \textbf{Parameter 1:} \texttt{RISCV\_ISA} with values \texttt{rv32i}, \texttt{rv32im}, \texttt{rv32ic}, and \texttt{rv32imc}
+	\item \textbf{Parameter 2:} datapath configuration given by the pair \texttt{(BARREL\_SHIFTER, TWO\_CYCLE\_ALU)} with values \texttt{(0,0)}, \texttt{(0,1)}, \texttt{(1,0)}, and \texttt{(1,1)}
+\end{itemize}
+
+The current automated flow uses one toolchain, \texttt{riscv-none-elf-gcc}, for all measurements. The toolchain is therefore mentioned here once and omitted from the tables. The timing and benchmark table reports the software code size from the standalone Dhrystone flow and the hardware code size from the PicoSoC firmware build, both as \texttt{.text} section size.
+
+\small
+\begin{table}[!ht]
+	\centering
+	\caption{Implementation results for all parameter combinations.}
+	\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l l l r r r r r r}
+		\toprule
+		\# & Param. 1         & Param. 2       & LC        & RAM   & IO    & GB  & DSP & $f_{\max}$ [MHz] \\
+		\midrule
+		1  & \texttt{rv32i}   & \texttt{(0,0)} & 3575/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 19.96 \\
+		2  & \texttt{rv32i}   & \texttt{(0,1)} & 3580/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 19.62 \\
+		3  & \texttt{rv32i}   & \texttt{(1,0)} & 3709/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 18.74 \\
+		4  & \texttt{rv32i}   & \texttt{(1,1)} & 3804/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 20.97 \\
+		5  & \texttt{rv32im}  & \texttt{(0,0)} & 4674/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 19.00 \\
+		6  & \texttt{rv32im}  & \texttt{(0,1)} & 4679/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 19.38 \\
+		7  & \texttt{rv32im}  & \texttt{(1,0)} & 4805/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 18.90 \\
+		8  & \texttt{rv32im}  & \texttt{(1,1)} & 4896/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 18.71 \\
+		9  & \texttt{rv32ic}  & \texttt{(0,0)} & 3999/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 17.39 \\
+		10 & \texttt{rv32ic}  & \texttt{(0,1)} & 4110/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 16.93 \\
+		11 & \texttt{rv32ic}  & \texttt{(1,0)} & 4186/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 16.87 \\
+		12 & \texttt{rv32ic}  & \texttt{(1,1)} & 4216/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 16.68 \\
+		13 & \texttt{rv32imc} & \texttt{(0,0)} & 5161/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 16.99 \\
+		14 & \texttt{rv32imc} & \texttt{(0,1)} & 5160/5280 & 28/30 & 16/96 & 8/8 & 0/8 & 15.87 \\
+		15 & \texttt{rv32imc} & \texttt{(1,0)} & --        & --    & --    & --  & --  & --    \\
+		16 & \texttt{rv32imc} & \texttt{(1,1)} & --        & --    & --    & --  & --  & --    \\
+		\bottomrule
+	\end{tabular*}
+\end{table}
+
+\vspace{-0.8em}
+\small
+\begin{table}[!ht]
+	\centering
+	\caption{Timing, code-size, and benchmark results for all parameter combinations.}
+	\resizebox{\textwidth}{!}{%
+		\begin{tabular}{l l l r r r r}
+			\toprule
+			\# & Param. 1         & Param. 2       & SW code (.text) & HW code (.text) & SW DMIPS/MHz & HW DMIPS/MHz \\
+			\midrule
+			1  & \texttt{rv32i}   & \texttt{(0,0)} & 82738           & 4288            & 0.282        & 0.309        \\
+			2  & \texttt{rv32i}   & \texttt{(0,1)} & 82738           & 4288            & 0.281        & 0.309        \\
+			3  & \texttt{rv32i}   & \texttt{(1,0)} & 82738           & 4288            & 0.289        & 0.307        \\
+			4  & \texttt{rv32i}   & \texttt{(1,1)} & 82738           & 4288            & 0.287        & 0.316        \\
+			5  & \texttt{rv32im}  & \texttt{(0,0)} & 82574           & 4148            & 0.292        & 0.314        \\
+			6  & \texttt{rv32im}  & \texttt{(0,1)} & 82574           & 4148            & 0.290        & 0.306        \\
+			7  & \texttt{rv32im}  & \texttt{(1,0)} & 82574           & 4148            & 0.297        & 0.305        \\
+			8  & \texttt{rv32im}  & \texttt{(1,1)} & 82574           & 4148            & 0.295        & 0.312        \\
+			9  & \texttt{rv32ic}  & \texttt{(0,0)} & 81582           & 3156            & 0.284        & 0.310        \\
+			10 & \texttt{rv32ic}  & \texttt{(0,1)} & 81582           & 3156            & 0.268        & 0.311        \\
+			11 & \texttt{rv32ic}  & \texttt{(1,0)} & 81582           & 3156            & 0.291        & 0.293        \\
+			12 & \texttt{rv32ic}  & \texttt{(1,1)} & 81582           & 3156            & 0.274        & 0.319        \\
+			13 & \texttt{rv32imc} & \texttt{(0,0)} & 81528           & 3056            & 0.292        & 0.299        \\
+			14 & \texttt{rv32imc} & \texttt{(0,1)} & 81528           & 3056            & 0.277        & 0.307        \\
+			15 & \texttt{rv32imc} & \texttt{(1,0)} & --              & --              & --           & --           \\
+			16 & \texttt{rv32imc} & \texttt{(1,1)} & --              & --              & --           & --           \\
+			\bottomrule
+		\end{tabular}
+	}
+\end{table}
+\normalsize
+
+\section*{Interpretation}
+Several trends can be observed from the measured configurations:
+
+\begin{itemize}
+	\item Enabling multiply/divide support through the \texttt{m} extension significantly increases logic usage. The transition from \texttt{rv32i} to \texttt{rv32im} increases LUT usage by roughly 1100 logic cells.
+	\item Adding compressed instructions reduces both the software and hardware \texttt{.text} code size substantially, with the \texttt{rv32ic} and \texttt{rv32imc} families producing the smallest code in this dataset.
+	\item Enabling the barrel shifter tends to increase area and often improves the measured software Dhrystone efficiency (SW DMIPS/MHz) slightly. In this dataset the clearest gains are for \texttt{rv32i}, \texttt{rv32im}, and \texttt{rv32ic} when comparing configuration \texttt{(0,0)} against \texttt{(1,0)}; the hardware Dhrystone values (HW DMIPS/MHz) are more mixed.
+	\item The two-cycle ALU generally does not improve the measured Dhrystone efficiency in this dataset. In several cases it slightly lowers either $f_{\max}$, SW/HW DMIPS/MHz, or both.
+	\item The \texttt{rv32imc} configurations with \texttt{BARREL\_SHIFTER=1} could not be completed because the design exceeds the practical device limits during implementation. This indicates that this region of the parameter space is too large for the target.
+\end{itemize}
+
+\section*{Conclusion}
+The measurements show that the ISA choice dominates area and code-size behavior, while the datapath options mainly fine-tune the speed-area trade-off. Compressed-instruction variants achieve the smallest software and hardware binaries, and enabling the barrel shifter often yields a modest gain in SW DMIPS/MHz for a moderate area increase, although the HW DMIPS/MHz trend is not consistent across all ISAs. By contrast, the two-cycle ALU does not provide a clear advantage in this dataset. Overall, configurations near \texttt{rv32i} or \texttt{rv32im} with \texttt{BARREL\_SHIFTER=1} and \texttt{TWO\_CYCLE\_ALU=0} appear to offer the best balance for the iCEBreaker target.
+
+\end{document}
