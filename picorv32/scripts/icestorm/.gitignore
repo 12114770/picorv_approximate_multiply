@@ -1,0 +1,15 @@
+synth.blif
+synth.log
+synth.bin
+synth.txt
+synth.v
+synth.json
+route.v
+example.asc
+example.bin
+firmware.hex
+firmware.elf
+firmware.map
+firmware.bin
+*.vcd
+*.vvp

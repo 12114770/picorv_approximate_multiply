@@ -1,5 +1,0 @@
-RISCV_ISA,BARREL_SHIFTER,TWO_CYCLE_ALU,icestorm_lc,icestorm_ram,sb_io,sb_gb,icestorm_dsp,fmax_mhz,sw_code_size,hw_code_size,sw_dmips_per_mhz,hw_dmips_per_mhz
-rv32i,0,0,3575/5280,28/30,16/96,8/8,0/8,19.96,82738,4288,0.282,
-rv32i,0,1,3580/5280,28/30,16/96,8/8,0/8,19.62,82738,4288,0.281,
-rv32i,1,0,3709/5280,28/30,16/96,8/8,0/8,18.74,82738,4288,0.289,
-rv32i,1,1,3804/5280,28/30,16/96,8/8,0/8,20.97,82738,4288,0.287,
