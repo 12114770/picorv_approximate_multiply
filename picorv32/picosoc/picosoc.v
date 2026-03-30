@@ -82,6 +82,10 @@ module picosoc (
 	parameter [0:0] ENABLE_COUNTERS = 1;
 	parameter [0:0] ENABLE_IRQ_QREGS = 0;
 	parameter integer MUL16_LOA_K = 4;
+	parameter integer MUL16_M0_APPROX = 2;
+	parameter integer MUL16_M1_APPROX = 2;
+	parameter integer MUL16_M2_APPROX = 2;
+	parameter integer MUL16_M3_APPROX = 2;
 
 	parameter integer MEM_WORDS = 256;
 	parameter [31:0] STACKADDR = (4*MEM_WORDS);       // end of memory
@@ -184,7 +188,11 @@ module picosoc (
 	);
 
 	picorv32_pcpi_mul16_seq #(
-		.LOA_K(MUL16_LOA_K)
+		.LOA_K(MUL16_LOA_K),
+		.M0_APPROX(MUL16_M0_APPROX),
+		.M1_APPROX(MUL16_M1_APPROX),
+		.M2_APPROX(MUL16_M2_APPROX),
+		.M3_APPROX(MUL16_M3_APPROX)
 	) pcpi_mul16 (
 		.clk(clk),
 		.resetn(resetn),

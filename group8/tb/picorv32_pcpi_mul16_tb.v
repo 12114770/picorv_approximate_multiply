@@ -2,6 +2,10 @@
 
 module picorv32_pcpi_mul16_tb;
 	parameter integer LOA_K = 4;
+	parameter integer M0_APPROX = 2;
+	parameter integer M1_APPROX = 2;
+	parameter integer M2_APPROX = 2;
+	parameter integer M3_APPROX = 2;
 	localparam [6:0] CUSTOM_OPCODE = 7'b0001011;
 	localparam [2:0] CUSTOM_FUNCT3 = 3'b000;
 	localparam [6:0] CUSTOM_FUNCT7 = 7'b0101010;
@@ -20,6 +24,10 @@ module picorv32_pcpi_mul16_tb;
 
 	picorv32_pcpi_mul16_approx #(
 		.LOA_K(LOA_K),
+		.M0_APPROX(M0_APPROX),
+		.M1_APPROX(M1_APPROX),
+		.M2_APPROX(M2_APPROX),
+		.M3_APPROX(M3_APPROX),
 		.CUSTOM_OPCODE(CUSTOM_OPCODE),
 		.CUSTOM_FUNCT3(CUSTOM_FUNCT3),
 		.CUSTOM_FUNCT7(CUSTOM_FUNCT7)
@@ -37,7 +45,11 @@ module picorv32_pcpi_mul16_tb;
 	);
 
 	approx_mul16_loa #(
-		.LOA_K(LOA_K)
+		.LOA_K(LOA_K),
+		.M0_APPROX(M0_APPROX),
+		.M1_APPROX(M1_APPROX),
+		.M2_APPROX(M2_APPROX),
+		.M3_APPROX(M3_APPROX)
 	) ref_model (
 		.a(pcpi_rs1[15:0]),
 		.b(pcpi_rs2[15:0]),

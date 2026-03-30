@@ -1,5 +1,19 @@
 # Select your RISC-V compiler here (riscv32i/riscv32im/riscv32ic/riscv32imc)
 RISCV_ISA = ic
+LOA_K ?= 4
+M0_APPROX ?= 2
+M1_APPROX ?= 2
+M2_APPROX ?= 2
+M3_APPROX ?= 2
+BOARD_APP ?= demo
+
+ifeq ($(BOARD_APP),mul16_dhry)
+FIRMWARE_C = ../../dhrystone_clone/firmware_dhrystone_mul16.c
+FIRMWARE_EXTRA_SRCS = ../../dhrystone_clone/mul16_bench.c
+else
+FIRMWARE_C = firmware.c
+FIRMWARE_EXTRA_SRCS =
+endif
 
 GROUP8_RTL = ../../group8/rtl/v2_8x8_multiplier.v \
 	../../group8/rtl/loa_adder.v \
@@ -33,6 +47,8 @@ disdump: $(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf
 
 # ---- iCE40 IceBreaker Board ----
 
+all: pnr
+
 sim: $(SIM_BUILD_DIR)/icebreaker_tb.vpp $(FIRMWARE_BUILD_DIR)/icebreaker_fw.hex $(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.hex
 	vvp -N $< +firmware=$(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.hex
 
@@ -60,10 +76,10 @@ spiflash_tb: $(SIM_BUILD_DIR)/spiflash_tb.vvp $(FIRMWARE_BUILD_DIR)/icebreaker_f
 $(FIRMWARE_BUILD_DIR)/icebreaker_flash_sections.lds: sections.lds | $(FIRMWARE_BUILD_DIR)
 	$(CROSS)cpp -P -DICEBREAKER -DEXECUTE_FROM_FLASH -o $@ $<
 
-$(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.elf: $(FIRMWARE_BUILD_DIR)/icebreaker_flash_sections.lds start.s firmware.c $(DHRY_SRCS) | $(FIRMWARE_BUILD_DIR)
+$(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.elf: $(FIRMWARE_BUILD_DIR)/icebreaker_flash_sections.lds start.s $(FIRMWARE_C) $(FIRMWARE_EXTRA_SRCS) $(DHRY_SRCS) | $(FIRMWARE_BUILD_DIR)
 	$(CROSS)gcc $(CFLAGS) -DICEBREAKER -DTIME -DRISCV -DUSE_MYSTDLIB -ffreestanding -nostdlib -mabi=ilp32 -march=rv32$(RISCV_ISA) \
 	-Wl,-Bstatic,-T,$(FIRMWARE_BUILD_DIR)/icebreaker_flash_sections.lds,-Map,$(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.map,--strip-debug \
-	-o $(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.elf start.s firmware.c $(DHRY_SRCS) \
+	-o $(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.elf start.s $(FIRMWARE_C) $(FIRMWARE_EXTRA_SRCS) $(DHRY_SRCS) \
 	-Wno-implicit-int -Wno-implicit-function-declaration -lgcc
 
 $(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.hex: $(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.elf
@@ -76,10 +92,10 @@ $(FIRMWARE_BUILD_DIR)/icebreaker_fw_flash.bin: $(FIRMWARE_BUILD_DIR)/icebreaker_
 $(FIRMWARE_BUILD_DIR)/icebreaker_bram_sections.lds: sections.lds | $(FIRMWARE_BUILD_DIR)
 	$(CROSS)cpp -P -DICEBREAKER -o $@ $<
 
-$(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.elf: $(FIRMWARE_BUILD_DIR)/icebreaker_bram_sections.lds start.s firmware.c $(DHRY_SRCS) | $(FIRMWARE_BUILD_DIR)
+$(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.elf: $(FIRMWARE_BUILD_DIR)/icebreaker_bram_sections.lds start.s $(FIRMWARE_C) $(FIRMWARE_EXTRA_SRCS) $(DHRY_SRCS) | $(FIRMWARE_BUILD_DIR)
 	$(CROSS)gcc $(CFLAGS) -DICEBREAKER -DTIME -DRISCV -DUSE_MYSTDLIB -ffreestanding -nostdlib -mabi=ilp32 -march=rv32$(RISCV_ISA) \
 	-Wl,-Bstatic,-T,$(FIRMWARE_BUILD_DIR)/icebreaker_bram_sections.lds,-Map,$(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.map,--strip-debug \
-	-o $(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.elf start.s firmware.c $(DHRY_SRCS) \
+	-o $(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.elf start.s $(FIRMWARE_C) $(FIRMWARE_EXTRA_SRCS) $(DHRY_SRCS) \
 	-Wno-implicit-int -Wno-implicit-function-declaration -lgcc
 
 $(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.hex: $(FIRMWARE_BUILD_DIR)/icebreaker_fw.bin
@@ -96,8 +112,8 @@ $(FIRMWARE_BUILD_DIR)/icebreaker_fw_random.hex:
 $(FIRMWARE_BUILD_DIR)/icebreaker_fw.hex: $(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf
 	$(CROSS)objcopy -O verilog $(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf $(FIRMWARE_BUILD_DIR)/icebreaker_fw.hex
 
-$(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf: $(FIRMWARE_BUILD_DIR)/icebreaker_sections.lds start.s firmware.c $(DHRY_SRCS) | $(FIRMWARE_BUILD_DIR)
-	$(CROSS)gcc $(CFLAGS) -DICEBREAKER -DTIME -DRISCV -DUSE_MYSTDLIB -ffreestanding -nostdlib -mabi=ilp32 -march=rv32$(RISCV_ISA) -Wl,-Bstatic,-T,$(FIRMWARE_BUILD_DIR)/icebreaker_sections.lds,-Map,$(FIRMWARE_BUILD_DIR)/icebreaker_fw.map,--strip-debug -o $(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf start.s firmware.c $(DHRY_SRCS) -Wno-implicit-int -Wno-implicit-function-declaration -lgcc
+$(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf: $(FIRMWARE_BUILD_DIR)/icebreaker_sections.lds start.s $(FIRMWARE_C) $(FIRMWARE_EXTRA_SRCS) $(DHRY_SRCS) | $(FIRMWARE_BUILD_DIR)
+	$(CROSS)gcc $(CFLAGS) -DICEBREAKER -DTIME -DRISCV -DUSE_MYSTDLIB -ffreestanding -nostdlib -mabi=ilp32 -march=rv32$(RISCV_ISA) -Wl,-Bstatic,-T,$(FIRMWARE_BUILD_DIR)/icebreaker_sections.lds,-Map,$(FIRMWARE_BUILD_DIR)/icebreaker_fw.map,--strip-debug -o $(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf start.s $(FIRMWARE_C) $(FIRMWARE_EXTRA_SRCS) $(DHRY_SRCS) -Wno-implicit-int -Wno-implicit-function-declaration -lgcc
 
 $(FIRMWARE_BUILD_DIR)/icebreaker_sections.lds: sections.lds | $(FIRMWARE_BUILD_DIR)
 	$(CROSS)cpp -P -DICEBREAKER -o $@ $^
@@ -109,7 +125,7 @@ $(FIRMWARE_BUILD_DIR)/icebreaker_fw.bin: $(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf
 $(SYNTH_BUILD_DIR)/icebreaker.json: icebreaker.v spimemio.v simpleuart.v picosoc.v ice40up5k_spram.v ../picorv32.v $(GROUP8_RTL) \
 	$(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.hex | $(SYNTH_BUILD_DIR)
 	yosys -f verilog -v3 -ql $(SYNTH_BUILD_DIR)/icebreaker.log \
-	-p 'synth_ice40 -dsp -top icebreaker -json $(SYNTH_BUILD_DIR)/icebreaker.json' $(filter %.v,$^)
+	-p 'read_verilog $(filter %.v,$^); chparam -set MUL16_LOA_K $(LOA_K) -set MUL16_M0_APPROX $(M0_APPROX) -set MUL16_M1_APPROX $(M1_APPROX) -set MUL16_M2_APPROX $(M2_APPROX) -set MUL16_M3_APPROX $(M3_APPROX) icebreaker; synth_ice40 -dsp -top icebreaker -json $(SYNTH_BUILD_DIR)/icebreaker.json'
 
 $(SYNTH_BUILD_DIR)/icebreaker_syn.v: $(SYNTH_BUILD_DIR)/icebreaker.json
 	yosys -p 'read_json $<; write_verilog $@'
@@ -130,7 +146,7 @@ $(BITSTREAM_BUILD_DIR)/icebreaker_bram.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(
 # ---- Simulation ----
 $(SIM_BUILD_DIR)/icebreaker_tb.vpp: icebreaker_tb.v icebreaker.v ice40up5k_spram.v spimemio.v simpleuart.v \
 	picosoc.v ../picorv32.v $(GROUP8_RTL) spiflash.v | $(SIM_BUILD_DIR)
-	iverilog -v -s testbench -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS
+	iverilog -v -s testbench -P testbench.LOA_K=$(LOA_K) -P testbench.M0_APPROX=$(M0_APPROX) -P testbench.M1_APPROX=$(M1_APPROX) -P testbench.M2_APPROX=$(M2_APPROX) -P testbench.M3_APPROX=$(M3_APPROX) -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS
 
 $(SIM_BUILD_DIR)/icebreaker_syn_tb.vvp: icebreaker_tb.v $(SYNTH_BUILD_DIR)/icebreaker_syn.v spiflash.v | $(SIM_BUILD_DIR)
 	iverilog -s testbench -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS -DPOST_SYNTH_SIM

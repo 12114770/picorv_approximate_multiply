@@ -47,6 +47,11 @@ module icebreaker (
 	inout  flash_io3
 );
 	parameter integer MEM_WORDS = 3072; //32768 if SRAM is used, 3072 for BRAM
+	parameter integer MUL16_LOA_K = 4;
+	parameter integer MUL16_M0_APPROX = 2;
+	parameter integer MUL16_M1_APPROX = 2;
+	parameter integer MUL16_M2_APPROX = 2;
+	parameter integer MUL16_M3_APPROX = 2;
 
 	reg [5:0] reset_cnt = 0;
 	wire resetn = &reset_cnt;
@@ -117,7 +122,11 @@ module icebreaker (
 		.ENABLE_MUL(0),
 		.ENABLE_FAST_MUL(0),
 		.ENABLE_DIV(0),
-		.MUL16_LOA_K(4),
+		.MUL16_LOA_K(MUL16_LOA_K),
+		.MUL16_M0_APPROX(MUL16_M0_APPROX),
+		.MUL16_M1_APPROX(MUL16_M1_APPROX),
+		.MUL16_M2_APPROX(MUL16_M2_APPROX),
+		.MUL16_M3_APPROX(MUL16_M3_APPROX),
 		.MEM_WORDS(MEM_WORDS),
 		.PROGADDR_RESET(32'h0000_0000)  // BRAM
 	) soc (

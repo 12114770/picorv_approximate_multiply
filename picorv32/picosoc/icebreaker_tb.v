@@ -20,6 +20,11 @@
 `timescale 1 ns / 1 ps
 
 module testbench;
+	parameter integer LOA_K = 4;
+	parameter integer M0_APPROX = 2;
+	parameter integer M1_APPROX = 2;
+	parameter integer M2_APPROX = 2;
+	parameter integer M3_APPROX = 2;
 	reg clk;
 	always #5 clk = (clk === 1'b0);
 
@@ -30,7 +35,7 @@ module testbench;
 		$dumpfile("build/sim/testbench.vcd");
 		$dumpvars(0, testbench);
 
-		repeat (6) begin
+		repeat (14) begin
 			repeat (50000) @(posedge clk);
 			$display("+50000 cycles");
 		end
@@ -67,8 +72,13 @@ module testbench;
 		// in order to avoid reduce simulation time
 		// required for intialization of RAM
 		`ifndef POST_SYNTH_SIM
-			.MEM_WORDS(3072)
+			.MEM_WORDS(3072),
 		`endif
+		.MUL16_LOA_K(LOA_K),
+		.MUL16_M0_APPROX(M0_APPROX),
+		.MUL16_M1_APPROX(M1_APPROX),
+		.MUL16_M2_APPROX(M2_APPROX),
+		.MUL16_M3_APPROX(M3_APPROX)
 	) uut (
 		.clk      (clk      ),
 		.led1     (led1     ),

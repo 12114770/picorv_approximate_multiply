@@ -2,7 +2,10 @@
 
 module approx_mul16_iter_datapath #(
 	parameter integer LOA_K = 4,
-	parameter [8*22-1:0] V2_IMPLEMENTATION = "PLACEHOLDER_EXACT"
+	parameter integer M0_APPROX = 2,
+	parameter integer M1_APPROX = 2,
+	parameter integer M2_APPROX = 2,
+	parameter integer M3_APPROX = 2
 ) (
 	input             clk,
 	input             resetn,
@@ -28,7 +31,11 @@ module approx_mul16_iter_datapath #(
 
 	reg  [7:0] mul_a;
 	reg  [7:0] mul_b;
-	wire [15:0] mul_p;
+	wire [15:0] mul_p0;
+	wire [15:0] mul_p1;
+	wire [15:0] mul_p2;
+	wire [15:0] mul_p3;
+	reg  [15:0] mul_p;
 
 	wire [23:0] upper0 = {16'b0, m0_reg[15:8]};
 	wire [23:0] upper1 = {8'b0, m1_reg};
@@ -64,12 +71,49 @@ module approx_mul16_iter_datapath #(
 	end
 
 	v2_8x8_multiplier #(
-		.V2_IMPLEMENTATION(V2_IMPLEMENTATION)
-	) v2_mul (
+		.APPROX_GROUP_B(M0_APPROX),
+		.APPROX_GROUP_A(M0_APPROX)
+	) v2_mul0 (
 		.a(mul_a),
 		.b(mul_b),
-		.p(mul_p)
+		.p(mul_p0)
 	);
+
+	v2_8x8_multiplier #(
+		.APPROX_GROUP_B(M1_APPROX),
+		.APPROX_GROUP_A(M1_APPROX)
+	) v2_mul1 (
+		.a(mul_a),
+		.b(mul_b),
+		.p(mul_p1)
+	);
+
+	v2_8x8_multiplier #(
+		.APPROX_GROUP_B(M2_APPROX),
+		.APPROX_GROUP_A(M2_APPROX)
+	) v2_mul2 (
+		.a(mul_a),
+		.b(mul_b),
+		.p(mul_p2)
+	);
+
+	v2_8x8_multiplier #(
+		.APPROX_GROUP_B(M3_APPROX),
+		.APPROX_GROUP_A(M3_APPROX)
+	) v2_mul3 (
+		.a(mul_a),
+		.b(mul_b),
+		.p(mul_p3)
+	);
+
+	always @* begin
+		case (partial_sel)
+			2'd0: mul_p = mul_p0;
+			2'd1: mul_p = mul_p1;
+			2'd2: mul_p = mul_p2;
+			default: mul_p = mul_p3;
+		endcase
+	end
 
 	loa_adder #(
 		.WIDTH(24),

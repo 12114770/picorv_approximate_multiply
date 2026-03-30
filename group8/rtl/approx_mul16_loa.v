@@ -2,7 +2,10 @@
 
 module approx_mul16_loa #(
 	parameter integer LOA_K = 4,
-	parameter [8*22-1:0] V2_IMPLEMENTATION = "PLACEHOLDER_EXACT"
+	parameter integer M0_APPROX = 2,
+	parameter integer M1_APPROX = 2,
+	parameter integer M2_APPROX = 2,
+	parameter integer M3_APPROX = 2
 ) (
 	input  [15:0] a,
 	input  [15:0] b,
@@ -44,7 +47,8 @@ module approx_mul16_loa #(
 	wire        unused_carry2;
 
 	v2_8x8_multiplier #(
-		.V2_IMPLEMENTATION(V2_IMPLEMENTATION)
+		.APPROX_GROUP_B(M0_APPROX),
+		.APPROX_GROUP_A(M0_APPROX)
 	) u_m0 (
 		.a(a[7:0]),
 		.b(b[7:0]),
@@ -52,7 +56,8 @@ module approx_mul16_loa #(
 	);
 
 	v2_8x8_multiplier #(
-		.V2_IMPLEMENTATION(V2_IMPLEMENTATION)
+		.APPROX_GROUP_B(M1_APPROX),
+		.APPROX_GROUP_A(M1_APPROX)
 	) u_m1 (
 		.a(a[7:0]),
 		.b(b[15:8]),
@@ -60,7 +65,8 @@ module approx_mul16_loa #(
 	);
 
 	v2_8x8_multiplier #(
-		.V2_IMPLEMENTATION(V2_IMPLEMENTATION)
+		.APPROX_GROUP_B(M2_APPROX),
+		.APPROX_GROUP_A(M2_APPROX)
 	) u_m2 (
 		.a(a[15:8]),
 		.b(b[7:0]),
@@ -68,7 +74,8 @@ module approx_mul16_loa #(
 	);
 
 	v2_8x8_multiplier #(
-		.V2_IMPLEMENTATION(V2_IMPLEMENTATION)
+		.APPROX_GROUP_B(M3_APPROX),
+		.APPROX_GROUP_A(M3_APPROX)
 	) u_m3 (
 		.a(a[15:8]),
 		.b(b[15:8]),

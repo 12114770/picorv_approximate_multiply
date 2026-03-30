@@ -9,7 +9,7 @@ The design builds a 16x16 unsigned multiplier from four reusable 8x8 blocks:
 - `M2 = A[15:8] * B[7:0]`
 - `M3 = A[15:8] * B[15:8]`
 
-To match the project requirement, all four blocks use the same `v2_8x8_multiplier` module. Because the course material available in this workspace still does not fully specify the internal `22` netlist, the current implementation uses a best-effort `22` model: the 8x8 multiplication is split into two 8x4 B-groups, and each group suppresses its two least-significant local bits before recombination. The surrounding hierarchy is unchanged, so a stricter course-provided `22` block can still be inserted later if needed.
+To match the project requirement, all four blocks use the same reusable `v2_8x8_multiplier` module. The current implementation supports the table families `E`, `22`, `44`, `55`, and `66` by splitting each 8x8 multiply into a lower-order 8x4 B-group and a higher-order 8x4 B-group, then suppressing the configured number of least-significant local bits in each group before recombination. This is a best-effort structural model derived from the slides and is sufficient to automate all assigned configurations.
 
 Accumulation uses a Lower-part OR Adder (LOA). The low byte of `M0` is forwarded directly because it does not overlap with any other partial product. The overlapping upper 24-bit accumulation region is combined with a three-stage LOA tree. The LOA lower `k` bits use bitwise OR and the upper bits are added exactly with carry injection from bit `k-1`, matching the intended LOA style.
 
@@ -28,6 +28,7 @@ For Group 8, the required LOA configuration is `k = 4` only (`k-version a`).
 - `group8/sw/mul16.h` - software macro/helper for the custom instruction
 - `group8/sw/mul16_demo.c` - minimal software example
 - `group8/scripts/evaluate_mul16.py` - NMED/MRED estimation helper
+- `group8/scripts/run_all_configs.py` - automation for all 32 assigned table entries
 - `Makefile` - automation for simulation, synthesis, and metrics
 
 ## Why this multiplier for PCPI
@@ -40,11 +41,11 @@ These numbers are based on the current best-effort `22` 8x8 model.
 
 Random metric estimate over 10,000 vectors for the required Group 8 setting:
 
-- `k=4`: `NMED = 0.0000002792`, `MRED = 0.0000140432`
+- `k=4`, `22_22_22_22`: `NMED = 0.0002618991`, `MRED = 0.0053845639`
 
 Yosys generic-cell synthesis results:
 
-- `k=4`: `2065` total cells
+- `k=4`, `22_22_22_22`: `2165` total cells
 
 ## Simulation
 
@@ -52,6 +53,7 @@ Top-level multiplier testbench:
 
 ```sh
 make sim LOA_K=4
+make sim LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6
 ```
 
 PCPI core testbench:
@@ -73,11 +75,95 @@ Outputs:
 - netlists in `build/synth/`
 - synthesis logs in `build/synth/`
 
+## Resource Consumption
+
+Single configuration resource CSV:
+
+```sh
+make resources LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
+```
+
+All 32 assigned configurations:
+
+```sh
+make resources32
+```
+
+Outputs:
+
+- `build/resource_analysis/resources.csv`
+- `build/resource_analysis/resources32.csv`
+
+## Combined Analysis
+
+Real-board combined analysis for all 32 configurations by default:
+
+```sh
+make combined
+```
+
+Explicit real-board combined analysis with UART capture:
+
+```sh
+make combined_board LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
+```
+
+If `LOA_K` or any `M0..M3` value is passed to `make combined`, it runs only that one configuration instead of the full sweep.
+
+All 32 configurations in one combined CSV:
+
+```sh
+make combined32 METRIC_SAMPLES=2000
+```
+
+Output:
+
+- `build/combined_analysis/combined.csv`
+- `build/combined_analysis/combined32.csv`
+
+The combined analyzer collects:
+
+- `NMED` and `MRED`
+- synthesis resource counts
+- iCEBreaker place-and-route max frequency
+- Dhrystone `DMIPS/MHz`
+- `mul16` benchmark iterations, cycles, and checksum
+
 ## Error Metrics
 
 ```sh
 make metrics LOA_K=4 METRIC_SAMPLES=100000
+make metrics LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6 METRIC_SAMPLES=100000
 ```
+
+## Configuration Sweep
+
+The table suffix maps to LOA width automatically:
+
+- `a` -> `k = 4`
+- `b` -> `k = 6`
+
+The block labels map as follows:
+
+- `E` -> exact 8x8 block (`0` approximated local bits per group)
+- `22` -> `2` local bits approximated per group
+- `44` -> `4` local bits approximated per group
+- `55` -> `5` local bits approximated per group
+- `66` -> `6` local bits approximated per group
+
+Run the full 32-configuration automation with:
+
+```sh
+make sweep32 METRIC_SAMPLES=10000
+```
+
+Quick sweep without synthesis:
+
+```sh
+make sweep32_quick METRIC_SAMPLES=10000
+```
+
+This writes a CSV summary to `build/config_sweep/results.csv`.
 
 ## Group 8 configuration
 

@@ -11,7 +11,15 @@ BITSTREAM_BUILD_DIR = $(BUILD_DIR)/bitstream
 # set to 4 for simulation
 FIRMWARE_COUNTER_BITS=18
 
-all: $(BITSTREAM_BUILD_DIR)/example.bin
+LOA_K ?= 4
+M0_APPROX ?= 2
+M1_APPROX ?= 2
+M2_APPROX ?= 2
+M3_APPROX ?= 2
+BOARD_APP ?= mul16_dhry
+
+all:
+	$(MAKE) -C ../../picosoc all BOARD_APP=$(BOARD_APP) LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX)
 
 ## -------------------
 ## firmware generation
@@ -125,6 +133,7 @@ $(BUILD_DIR):
 
 clean:
 	rm -vrf $(BUILD_DIR)
+	$(MAKE) -C ../../picosoc clean
 
 .PHONY: all prog_sram view clean
 .PHONY: example_sim synth_sim route_sim timing

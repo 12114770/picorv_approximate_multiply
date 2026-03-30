@@ -2,6 +2,10 @@
 
 module approx_mul16_loa_tb;
 	parameter integer LOA_K = 4;
+	parameter integer M0_APPROX = 2;
+	parameter integer M1_APPROX = 2;
+	parameter integer M2_APPROX = 2;
+	parameter integer M3_APPROX = 2;
 
 	reg  [15:0] a;
 	reg  [15:0] b;
@@ -15,7 +19,11 @@ module approx_mul16_loa_tb;
 	reg [31:0] exact_product;
 
 	approx_mul16_loa #(
-		.LOA_K(LOA_K)
+		.LOA_K(LOA_K),
+		.M0_APPROX(M0_APPROX),
+		.M1_APPROX(M1_APPROX),
+		.M2_APPROX(M2_APPROX),
+		.M3_APPROX(M3_APPROX)
 	) dut (
 		.a(a),
 		.b(b),
@@ -25,12 +33,30 @@ module approx_mul16_loa_tb;
 	function [15:0] v2_mul8_model;
 		input [7:0] x;
 		input [7:0] y;
+		input integer approx_group_a;
+		input integer approx_group_b;
 		reg [11:0] group_a_exact;
 		reg [11:0] group_b_exact;
 		begin
 			group_a_exact = x * y[3:0];
 			group_b_exact = x * y[7:4];
-			v2_mul8_model = {group_b_exact[11:2], 2'b00, 4'b0000} + {4'b0000, group_a_exact[11:2], 2'b00};
+			case (approx_group_a)
+				0: group_a_exact = group_a_exact & 12'hfff;
+				2: group_a_exact = group_a_exact & 12'hffc;
+				4: group_a_exact = group_a_exact & 12'hff0;
+				5: group_a_exact = group_a_exact & 12'hfe0;
+				6: group_a_exact = group_a_exact & 12'hfc0;
+				default: group_a_exact = 12'b0;
+			endcase
+			case (approx_group_b)
+				0: group_b_exact = group_b_exact & 12'hfff;
+				2: group_b_exact = group_b_exact & 12'hffc;
+				4: group_b_exact = group_b_exact & 12'hff0;
+				5: group_b_exact = group_b_exact & 12'hfe0;
+				6: group_b_exact = group_b_exact & 12'hfc0;
+				default: group_b_exact = 12'b0;
+			endcase
+			v2_mul8_model = {group_b_exact, 4'b0000} + {4'b0000, group_a_exact};
 		end
 	endfunction
 
@@ -85,10 +111,10 @@ module approx_mul16_loa_tb;
 		reg [23:0] s1;
 		reg [23:0] s2;
 		begin
-			m0 = v2_mul8_model(x[7:0], y[7:0]);
-			m1 = v2_mul8_model(x[7:0], y[15:8]);
-			m2 = v2_mul8_model(x[15:8], y[7:0]);
-			m3 = v2_mul8_model(x[15:8], y[15:8]);
+			m0 = v2_mul8_model(x[7:0], y[7:0], M0_APPROX, M0_APPROX);
+			m1 = v2_mul8_model(x[7:0], y[15:8], M1_APPROX, M1_APPROX);
+			m2 = v2_mul8_model(x[15:8], y[7:0], M2_APPROX, M2_APPROX);
+			m3 = v2_mul8_model(x[15:8], y[15:8], M3_APPROX, M3_APPROX);
 			u0 = {16'b0, m0[15:8]};
 			u1 = {8'b0, m1};
 			u2 = {8'b0, m2};
@@ -149,7 +175,7 @@ module approx_mul16_loa_tb;
 			$finish(1);
 		end
 
-		$display("TEST PASSED for LOA_K=%0d", LOA_K);
+		$display("TEST PASSED for LOA_K=%0d cfg=%0d_%0d_%0d_%0d", LOA_K, M0_APPROX, M1_APPROX, M2_APPROX, M3_APPROX);
 		$finish;
 	end
 endmodule

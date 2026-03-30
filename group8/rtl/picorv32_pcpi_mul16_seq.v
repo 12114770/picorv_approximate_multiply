@@ -2,10 +2,13 @@
 
 module picorv32_pcpi_mul16_seq #(
 	parameter integer LOA_K = 4,
+	parameter integer M0_APPROX = 2,
+	parameter integer M1_APPROX = 2,
+	parameter integer M2_APPROX = 2,
+	parameter integer M3_APPROX = 2,
 	parameter [6:0] CUSTOM_OPCODE = 7'b0001011,
 	parameter [2:0] CUSTOM_FUNCT3 = 3'b000,
-	parameter [6:0] CUSTOM_FUNCT7 = 7'b0101010,
-	parameter [8*22-1:0] V2_IMPLEMENTATION = "PLACEHOLDER_EXACT"
+	parameter [6:0] CUSTOM_FUNCT7 = 7'b0101010
 ) (
 	input             clk,
 	input             resetn,
@@ -49,7 +52,10 @@ module picorv32_pcpi_mul16_seq #(
 
 	approx_mul16_iter_datapath #(
 		.LOA_K(LOA_K),
-		.V2_IMPLEMENTATION(V2_IMPLEMENTATION)
+		.M0_APPROX(M0_APPROX),
+		.M1_APPROX(M1_APPROX),
+		.M2_APPROX(M2_APPROX),
+		.M3_APPROX(M3_APPROX)
 	) datapath (
 		.clk(clk),
 		.resetn(resetn),
