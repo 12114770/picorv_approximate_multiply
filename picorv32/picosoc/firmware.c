@@ -21,6 +21,7 @@
 #include <stdbool.h>
 
 #include "../dhrystone/dhry_top.h"
+#include "../../group8/sw/mul16.h"
 
 #ifdef ICEBREAKER
 #  define MEM_TOTAL 0x3000
@@ -38,6 +39,11 @@ extern uint32_t sram;
 #define reg_leds (*(volatile uint32_t*)0x03000000)
 
 // --------------------------------------------------------
+
+static inline uint32_t mul16_demo_u16(uint32_t lhs, uint32_t rhs)
+{
+	return mul16(lhs, rhs);
+}
 
 #if 0
 extern uint32_t flashio_worker_begin;
@@ -140,21 +146,6 @@ static uint32_t xorshift32(uint32_t *state)
 	x ^= x << 5;
 	*state = x;
 	return x;
-}
-
-static inline uint32_t mul16_pcpi_u16(uint32_t lhs, uint32_t rhs)
-{
-	uint32_t rd;
-	uint32_t rs1 = lhs & 0xffffu;
-	uint32_t rs2 = rhs & 0xffffu;
-
-	asm volatile (
-		".insn r %3, %4, %5, %0, %1, %2"
-		: "=r" (rd)
-		: "r" (rs1), "r" (rs2), "i" (0x0b), "i" (0), "i" (42)
-	);
-
-	return rd;
 }
 
 #if 0
@@ -541,7 +532,7 @@ void main()
 	for (i = 0; i < 100; i++) {
 		a = xorshift32(&seed) & 0xffffu;
 		b = xorshift32(&seed) & 0xffffu;
-		result = mul16_pcpi_u16(a, b);
+		result = mul16_demo_u16(a, b);
 		checksum ^= result + ((uint32_t)i << 16);
 
 	}

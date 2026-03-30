@@ -33,8 +33,6 @@ module picorv32_pcpi_mul16_approx #(
 		.p(approx_product)
 	);
 
-	// One-cycle PCPI response. The instruction consumes only the lower 16 bits
-	// of rs1 and rs2 and returns the 32-bit approximate unsigned product.
 	assign pcpi_wait = 1'b0;
 
 	always @(posedge clk) begin

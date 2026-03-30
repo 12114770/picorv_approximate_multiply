@@ -4,8 +4,9 @@ import random
 
 
 def v2_mul8(a: int, b: int) -> int:
-    # Placeholder model until the project-provided V2 internals are inserted.
-    return (a & 0xFF) * (b & 0xFF)
+    group_a = ((a & 0xFF) * (b & 0x0F)) & 0xFFC
+    group_b = ((a & 0xFF) * ((b >> 4) & 0x0F)) & 0xFFC
+    return (((group_b << 4) + group_a) & 0xFFFF)
 
 
 def loa_add(x: int, y: int, k: int, width: int = 32) -> int:
@@ -61,7 +62,7 @@ def main() -> None:
     print(f"samples={args.samples}")
     print(f"NMED={nmed_acc / args.samples:.10f}")
     print(f"MRED={mred_acc / max(mred_count, 1):.10f}")
-    print("note=metrics use the current placeholder V2 model; replace V2 first for final numbers")
+    print("note=metrics use the current best-effort 22 model; replace with the exact course block if available")
 
 
 if __name__ == "__main__":

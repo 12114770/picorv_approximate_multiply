@@ -31,6 +31,7 @@ help:
 	  'Group 8 approximate multiplier flow' \
 	  '' \
 	  'Targets:' \
+	  '  make_prog Build and program the IceBreaker BRAM image' \
 	  '  help      Show this help text' \
 	  '  sim       Compile and run the selected testbench' \
 	  '  synth     Synthesize the selected top module with Yosys' \
@@ -38,7 +39,7 @@ help:
 	  '  clean     Remove generated build files' \
 	  '' \
 	  'Common variables:' \
-	  '  LOA_K=4|6                              Select LOA approximation width' \
+	  '  LOA_K=4                                Group 8 required LOA width' \
 	  '  TESTBENCH=group8/tb/approx_mul16_loa_tb.v   Testbench source' \
 	  '  TBTOP=approx_mul16_loa_tb             Testbench top module' \
 	  '  TOP=approx_mul16_loa                  Synthesis top module' \
@@ -48,9 +49,13 @@ help:
 	  '' \
 	  'Examples:' \
 	  '  make sim LOA_K=4' \
-	  '  make sim LOA_K=6 TESTBENCH=group8/tb/picorv32_pcpi_mul16_tb.v TBTOP=picorv32_pcpi_mul16_tb' \
-	  '  make synth LOA_K=6 TOP=approx_mul16_loa' \
+	  '  make sim LOA_K=4 TESTBENCH=group8/tb/picorv32_pcpi_mul16_tb.v TBTOP=picorv32_pcpi_mul16_tb' \
+	  '  make synth LOA_K=4 TOP=approx_mul16_loa' \
+	  '  make make_prog' \
 	  '  make sim TESTBENCH=mul_tb.v DESIGN="add.v mul.v" VCD=mul.vcd'
+
+make_prog:
+	$(MAKE) -C picorv32/picosoc prog_bram
 
 sim: $(SIM_OUT)
 	$(VVP) $(SIM_OUT) +vcd=$(VCD)
@@ -77,4 +82,4 @@ $(BUILD_DIR):
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: help sim synth metrics clean
+.PHONY: help sim synth metrics clean make_prog

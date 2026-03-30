@@ -25,9 +25,12 @@ module approx_mul16_loa_tb;
 	function [15:0] v2_mul8_model;
 		input [7:0] x;
 		input [7:0] y;
+		reg [11:0] group_a_exact;
+		reg [11:0] group_b_exact;
 		begin
-			// Placeholder model until the true V2 block is available.
-			v2_mul8_model = x * y;
+			group_a_exact = x * y[3:0];
+			group_b_exact = x * y[7:4];
+			v2_mul8_model = {group_b_exact[11:2], 2'b00, 4'b0000} + {4'b0000, group_a_exact[11:2], 2'b00};
 		end
 	endfunction
 
