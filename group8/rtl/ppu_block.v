@@ -23,9 +23,9 @@ module ppu2
     input s_in,
     input c_in_i,
     input c_in_j,
+    output s_out,
     output c_out_i,
-    output c_out_j,
-    output s_out
+    output c_out_j
 );
     wire s_int;
 
@@ -44,6 +44,6 @@ module ppu2
         .s_in(s_int),
         .c_in(c_in_j),
         .s_out(s_out),
-        .c_out_j(c_out_j)
+        .c_out(c_out_j)
     );
 endmodule

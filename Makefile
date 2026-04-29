@@ -13,7 +13,15 @@ RTL_DIR ?= group8/rtl
 TB_DIR ?= group8/tb
 SW_DIR ?= group8/sw
 
-DESIGN ?= $(RTL_DIR)/v2_8x8_multiplier.v $(RTL_DIR)/loa_adder.v $(RTL_DIR)/approx_mul16_loa.v $(RTL_DIR)/approx_mul16_loa_k4.v $(RTL_DIR)/approx_mul16_loa_k6.v $(RTL_DIR)/picorv32_pcpi_mul16_approx.v
+DESIGN ?= 	$(RTL_DIR)/loa_adder.v \
+			$(RTL_DIR)/ppu_block.v \
+			$(RTL_DIR)/v2_block.v \
+			$(RTL_DIR)/v2_8x4_multiplier.v \
+			$(RTL_DIR)/v2_8x8_multiplier.v \
+			$(RTL_DIR)/approx_mul16_loa.v \
+			$(RTL_DIR)/approx_mul16_loa_k4.v \
+			$(RTL_DIR)/approx_mul16_loa_k6.v \
+			$(RTL_DIR)/picorv32_pcpi_mul16_approx.v
 TESTBENCH ?= $(TB_DIR)/approx_mul16_loa_tb.v
 TBTOP ?= approx_mul16_loa_tb
 TOP ?= approx_mul16_loa
