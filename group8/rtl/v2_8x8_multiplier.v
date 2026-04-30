@@ -10,11 +10,11 @@ module v2_8x8_multiplier #(
 	output [15:0] p
 );
 	initial begin
-		if (APPROX_GROUP_A <= 0 || APPROX_GROUP_A >= 6) begin
+		if (APPROX_GROUP_A < 0 || APPROX_GROUP_A > 6) begin
 			$display("ERROR: 8x8_multiplies requires 0 < APPROX_GROUP_A < 6. APPROX_GROUP_A=%0d", APPROX_GROUP_A);
 			$finish;
 		end
-		if (APPROX_GROUP_B <= 0 || APPROX_GROUP_B >= 6) begin
+		if (APPROX_GROUP_B < 0 || APPROX_GROUP_B > 6) begin
 			$display("ERROR: 8x8_multiplies requires 0 < APPROX_GROUP_B < 6. APPROX_GROUP_B=%0d", APPROX_GROUP_B);
 			$finish;
 		end
@@ -28,20 +28,39 @@ module v2_8x8_multiplier #(
     wire [11:0] group_b_out;
 	wire [11:0] loa_input_a;
 	wire [11:0] loa_input_b; 
+	generate
+		if(APPROX_GROUP_A != 0) begin : group_a
+			v2_8x4_multiplier #(.APPROX(APPROX_GROUP_A))
+			mu8x4(
+				.a(a),
+				.b(b[3:0]),
+				.s_out(group_a_out)
+			);
+		end else begin : group_a
+			e_8x4_multiplier mul8x4(
+				.a(a),
+				.b(b[3:0]),
+				.s_out(group_a_out)
+			);
+		end
+	endgenerate
 
-    v2_8x4_multiplier #(.APPROX(APPROX_GROUP_A))
-	group_a(
-		.a(a),
-		.b(b[3:0]),
-		.s(group_a_out)
-	);
-
-	v2_8x4_multiplier #(.APPROX(APPROX_GROUP_B))
-	group_b(
-		.a(a),
-		.b(b[7:4]),
-		.s(group_b_out)
-	);
+	generate
+		if(APPROX_GROUP_B != 0) begin : group_b
+			v2_8x4_multiplier #(.APPROX(APPROX_GROUP_B))
+			mul8x4(
+				.a(a),
+				.b(b[7:4]),
+				.s_out(group_b_out)
+			);
+		end else begin : group_b
+			e_8x4_multiplier mul8x4(
+				.a(a),
+				.b(b[7:4]),
+				.s_out(group_b_out)
+			);
+		end
+	endgenerate
 
 	assign loa_input_a[11:8] = 4'b0000;
 	assign loa_input_a[7:0]  = group_a_out[11:4];

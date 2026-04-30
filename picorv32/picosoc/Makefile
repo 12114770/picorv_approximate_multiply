@@ -15,10 +15,15 @@ FIRMWARE_C = firmware.c
 FIRMWARE_EXTRA_SRCS =
 endif
 
-GROUP8_RTL = ../../group8/rtl/v2_8x8_multiplier.v \
-	../../group8/rtl/loa_adder.v \
-	../../group8/rtl/approx_mul16_iter_datapath.v \
-	../../group8/rtl/picorv32_pcpi_mul16_seq.v
+GROUP8_RTL_DIR = ../../group8/rtl
+GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
+			 $(GROUP8_RTL_DIR)/ppu_block.v \
+			 $(GROUP8_RTL_DIR)/v2_block.v \
+			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/v2_8x8_multiplier.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_iter_datapath.v \
+			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_seq.v
 
 # Build directories:
 BUILD_DIR := build

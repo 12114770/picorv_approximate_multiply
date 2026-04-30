@@ -5,10 +5,10 @@ module v2_8x4_multiplier #(
 ) (
 	input  [7:0] a,
 	input  [3:0] b,
-	output [11:0] s
+	output [11:0] s_out
 );	
 	initial begin
-		if (APPROX <= 0 || APPROX >= 6) begin
+		if (APPROX < 0 || APPROX > 6) begin
 			$display("ERROR: 8x4_multiplies requires 0 < APPROX < 6. APPROX=%0d", APPROX);
 			$finish;
 		end
@@ -102,7 +102,7 @@ module v2_8x4_multiplier #(
 		end
 	endgenerate
 
-	ppu2 ppu_row2_out(
+	ppu2 ppu2_row2_out(
 		.a_i(a[7]),
 		.a_j(a[6]),
 		.b_i(b[2]),
@@ -115,7 +115,7 @@ module v2_8x4_multiplier #(
 		.c_out_j(c_3[7])
 	);
 
-	ppu1 ppu_row_3_out(
+	ppu1 ppu1_row_3_out(
 		.a(a[7]),
 		.b(b[3]),
 		.s_in(c_2[8]),
@@ -124,9 +124,9 @@ module v2_8x4_multiplier #(
 		.c_out(c_3[8])
 	);
 
-	assign s[0] = s_0[0];
-	assign s[1] = s_1[0];
-	assign s[2] = s_2[0];
-	assign s[10:3] = s_3;
-	assign s[11] = c_3[8];
+	assign s_out[0] = s_0[0];
+	assign s_out[1] = s_1[0];
+	assign s_out[2] = s_2[0];
+	assign s_out[10:3] = s_3;
+	assign s_out[11] = c_3[8];
 endmodule

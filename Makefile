@@ -17,6 +17,7 @@ DESIGN ?= 	$(RTL_DIR)/loa_adder.v \
 			$(RTL_DIR)/ppu_block.v \
 			$(RTL_DIR)/v2_block.v \
 			$(RTL_DIR)/v2_8x4_multiplier.v \
+			$(RTL_DIR)/e_8x4_multiplier.v \
 			$(RTL_DIR)/v2_8x8_multiplier.v \
 			$(RTL_DIR)/approx_mul16_loa.v \
 			$(RTL_DIR)/approx_mul16_loa_k4.v \
@@ -35,7 +36,7 @@ SIM_OUT ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K).vvp
 VCD ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K).vcd
 SYNTH_OUT ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG)_netlist.v
 SYNTH_LOG ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG).log
-METRIC_SAMPLES ?= 100000
+METRIC_SAMPLES ?= 10000
 SERIAL_PORT ?= /dev/ttyUSB1
 
 ifeq ($(filter command line,$(origin LOA_K) $(origin M0_APPROX) $(origin M1_APPROX) $(origin M2_APPROX) $(origin M3_APPROX)),)

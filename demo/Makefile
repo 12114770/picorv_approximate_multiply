@@ -1,7 +1,8 @@
 
 # Directories:
 BIN_DIR = synth_design
-DESIGN_DIR = designs
+GROUP8_DIR = ../group8
+DESIGN_DIR = designs \
 BUILD_DIR = build
 SOFTWARE_DIR = software
 SW_BUILD_DIR = $(BUILD_DIR)/$(SOFTWARE_DIR)

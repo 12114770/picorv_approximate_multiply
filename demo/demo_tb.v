@@ -30,6 +30,18 @@ module mod_16x16_mul_tb#(
         .s_out(s_out)
     );
 
+    //approx_mul16_loa  #(
+    //    .LOA_K(4),
+    //    .M0_APPROX(2),
+    //    .M1_APPROX(2),
+    //    .M2_APPROX(2),
+    //    .M3_APPROX(2)
+    //)dut(
+    //    .a(a_in),
+    //    .b(b_in),
+    //    .p(s_out)
+    //)
+
     // Loop indexes
     integer i,j;
 
