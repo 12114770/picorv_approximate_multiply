@@ -141,20 +141,20 @@ $(PNR_BUILD_DIR)/icebreaker.asc: icebreaker.pcf $(SYNTH_BUILD_DIR)/icebreaker.js
 
 # ---- Bitstreams ----
 $(BITSTREAM_BUILD_DIR)/icebreaker_flash.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(BITSTREAM_BUILD_DIR)
-	icetime -d up5k -c 12 -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
+	icetime -d up5k -c 11 -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
 	icepack $< $@
 
 $(BITSTREAM_BUILD_DIR)/icebreaker_bram.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(BITSTREAM_BUILD_DIR)
-	icetime -d up5k -c 12 -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
+	icetime -d up5k -c 11 -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
 	icepack $< $@
 
 # ---- Simulation ----
 $(SIM_BUILD_DIR)/icebreaker_tb.vpp: icebreaker_tb.v icebreaker.v ice40up5k_spram.v spimemio.v simpleuart.v \
 	picosoc.v ../picorv32.v $(GROUP8_RTL) spiflash.v | $(SIM_BUILD_DIR)
-	iverilog -v -s testbench -P testbench.LOA_K=$(LOA_K) -P testbench.M0_APPROX=$(M0_APPROX) -P testbench.M1_APPROX=$(M1_APPROX) -P testbench.M2_APPROX=$(M2_APPROX) -P testbench.M3_APPROX=$(M3_APPROX) -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS
+	iverilog -g2012 -v -s testbench -P testbench.LOA_K=$(LOA_K) -P testbench.M0_APPROX=$(M0_APPROX) -P testbench.M1_APPROX=$(M1_APPROX) -P testbench.M2_APPROX=$(M2_APPROX) -P testbench.M3_APPROX=$(M3_APPROX) -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS
 
 $(SIM_BUILD_DIR)/icebreaker_syn_tb.vvp: icebreaker_tb.v $(SYNTH_BUILD_DIR)/icebreaker_syn.v spiflash.v | $(SIM_BUILD_DIR)
-	iverilog -s testbench -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS -DPOST_SYNTH_SIM
+	iverilog -g2012 -s testbench -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS -DPOST_SYNTH_SIM
 
 # ---- Testbench for SPI Flash Model ----
 $(SIM_BUILD_DIR)/spiflash_tb.vvp: spiflash.v spiflash_tb.v | $(SIM_BUILD_DIR)

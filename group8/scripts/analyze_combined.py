@@ -54,7 +54,13 @@ def decode(token: str) -> int:
 
 def run_capture(cmd: list[str], workdir: Path) -> str:
     print("+", " ".join(cmd), flush=True)
-    proc = subprocess.run(cmd, cwd=workdir, check=True, text=True, capture_output=True)
+    proc = subprocess.run(cmd, cwd=workdir, text=True, capture_output=True)
+    if proc.returncode != 0:
+        if proc.stdout:
+            print(proc.stdout, end="", flush=True)
+        if proc.stderr:
+            print(proc.stderr, end="", flush=True)
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output=proc.stdout, stderr=proc.stderr)
     return proc.stdout + proc.stderr
 
 
@@ -186,7 +192,7 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
     run_capture(["make", "synth", *make_args], root)
     log_path = root / "build" / "synth" / f"approx_mul16_loa_k{k}_{m0}_{m1}_{m2}_{m3}.log"
     resource_data = parse_resources(log_path.read_text())
-    pnr_out = run_capture(["make", "-C", "picorv32/scripts/icestorm", "all", "BOARD_APP=mul16_dhry", *make_args], root)
+    pnr_out = run_capture(["make", "board_pnr", "BOARD_APP=mul16_dhry", *make_args], root)
 
     bench_mode = "board" if board else "simulation"
     if board:

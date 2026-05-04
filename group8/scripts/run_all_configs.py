@@ -96,7 +96,7 @@ def main() -> None:
         ]
 
         if not args.skip_sim:
-            run(["make", "sim", *make_args], root)
+            run(["make", "-B", "sim", *make_args], root)
 
         metrics_out = run([
             "python3",
