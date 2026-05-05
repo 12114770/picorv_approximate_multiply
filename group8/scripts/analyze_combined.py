@@ -85,6 +85,47 @@ def parse_metrics(output: str) -> dict[str, str]:
     }
 
 
+def run_metric_sim(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples: int) -> str:
+    sim_dir = root / "build" / "sim"
+    sim_dir.mkdir(parents=True, exist_ok=True)
+    sim_out = sim_dir / f"combined_metrics_k{k}_{m0}_{m1}_{m2}_{m3}_{samples}.vvp"
+    design = [
+        "group8/rtl/loa_adder.v",
+        "group8/rtl/ppu_block.v",
+        "group8/rtl/v2_block.v",
+        "group8/rtl/va_block.v",
+        "group8/rtl/v2_8x4_multiplier.v",
+        "group8/rtl/v2_8x8_multiplier.v",
+        "group8/rtl/e_8x4_multiplier.v",
+        "group8/rtl/e_8x8_multiplier.v",
+        "group8/rtl/approx_mul16_loa.v",
+        "group8/tb/a_16x16_mul_tb.v",
+    ]
+    compile_cmd = [
+        "iverilog",
+        "-g2012",
+        "-o",
+        str(sim_out),
+        "-s",
+        "approx_mul16_loa_tb",
+        "-P",
+        f"approx_mul16_loa_tb.LOA_K={k}",
+        "-P",
+        f"approx_mul16_loa_tb.M0_APPROX={m0}",
+        "-P",
+        f"approx_mul16_loa_tb.M1_APPROX={m1}",
+        "-P",
+        f"approx_mul16_loa_tb.M2_APPROX={m2}",
+        "-P",
+        f"approx_mul16_loa_tb.M3_APPROX={m3}",
+        "-P",
+        f"approx_mul16_loa_tb.TESTS={samples}",
+        *design,
+    ]
+    run_capture(compile_cmd, root)
+    return run_capture(["vvp", str(sim_out)], root)
+
+
 def parse_resources(log_text: str) -> dict[str, str]:
     hier_section = re.search(r"=== design hierarchy ===(.*?)(?:\n\d+\.|\Z)", log_text, re.S)
     text = hier_section.group(1) if hier_section else ""
@@ -128,10 +169,11 @@ def _match(text: str, pattern: str) -> str:
     return m.group(1) if m else ""
 
 
-def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, make_args: list[str]) -> str:
+def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, picosoc_args: list[str]) -> str:
     captured = []
-    print("+", " ".join(["make", "board_bench_test", *make_args]), flush=True)
-    subprocess.run(["make", "board_bench_test", *make_args], cwd=root, check=True, text=True)
+    cmd = ["make", "-C", "picorv32/picosoc", "prog_bram", *picosoc_args]
+    print("+", " ".join(cmd), flush=True)
+    subprocess.run(cmd, cwd=root, check=True, text=True)
     time.sleep(1.0)
 
     ser = None
@@ -166,8 +208,8 @@ def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, make_
     return "".join(captured)
 
 
-def simulate_bench(root: Path, make_args: list[str]) -> str:
-    sim_out = run_capture(["make", "board_bench_sim", *make_args], root)
+def simulate_bench(root: Path, picosoc_args: list[str]) -> str:
+    sim_out = run_capture(["make", "-C", "picorv32/picosoc", "sim", *picosoc_args], root)
     chars = []
     for token in re.findall(r"Serial data:\s+(.*)", sim_out):
         token = token.strip()
@@ -188,35 +230,31 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
         f"M2_APPROX={m2}",
         f"M3_APPROX={m3}",
     ]
+    picosoc_args = [
+        "BOARD_APP=mul16_dhry",
+        *make_args,
+    ]
 
     run_capture(["make", "clean"], root)
     run_capture(["make", "-C", "picorv32/picosoc", "clean"], root)
     (root / "build" / "combined_analysis").mkdir(parents=True, exist_ok=True)
 
-    metrics_out = run_capture([
-        "python3", "group8/scripts/evaluate_mul16.py",
-        "--k", str(k),
-        "--m0", str(m0),
-        "--m1", str(m1),
-        "--m2", str(m2),
-        "--m3", str(m3),
-        "--samples", str(samples),
-    ], root)
+    metrics_out = run_metric_sim(root, k, m0, m1, m2, m3, samples)
 
     run_capture(["make", "synth", *make_args], root)
     log_path = root / "build" / "synth" / f"approx_mul16_loa_k{k}_{m0}_{m1}_{m2}_{m3}.log"
     resource_data = parse_resources(log_path.read_text())
     pnr_out, pnr_returncode = run_pnr_capture(
-        ["make", "board_pnr", "BOARD_APP=mul16_dhry", *make_args],
+        ["make", "-C", "picorv32/picosoc", "all", *picosoc_args],
         root,
         root / "picorv32" / "picosoc" / "build" / "pnr" / "icebreaker.asc",
     )
 
     bench_mode = "board" if board else "simulation"
     if board:
-        bench_text = capture_board_uart(root, serial_port, baud, timeout_s, make_args)
+        bench_text = capture_board_uart(root, serial_port, baud, timeout_s, picosoc_args)
     else:
-        bench_text = simulate_bench(root, make_args)
+        bench_text = simulate_bench(root, picosoc_args)
 
     row = {
         "config": f"{m0}_{m1}_{m2}_{m3}",

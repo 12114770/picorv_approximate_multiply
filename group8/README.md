@@ -23,11 +23,11 @@ For Group 8, the required LOA configuration is `k = 4` only (`k-version a`).
 - `group8/rtl/approx_mul16_loa_k4.v` - fixed `k=4` wrapper
 - `group8/rtl/picorv32_pcpi_mul16_approx.v` - custom PCPI instruction core
 - `group8/rtl/picorv32_mul16_system.v` - PicoRV32 wrapper that hooks up the PCPI core
-- `group8/tb/approx_mul16_loa_tb.v` - multiplier testbench
+- `group8/tb/a_16x16_mul_tb.v` - multiplier and metric testbench
 - `group8/tb/picorv32_pcpi_mul16_tb.v` - PCPI core testbench
 - `group8/sw/mul16.h` - software macro/helper for the custom instruction
 - `group8/sw/mul16_demo.c` - minimal software example
-- `group8/scripts/evaluate_mul16.py` - NMED/MRED estimation helper
+- `group8/scripts/evaluate_mul16.py` - simulation-backed NMED/MRED helper
 - `group8/scripts/run_all_configs.py` - automation for all 32 assigned table entries
 - `Makefile` - automation for simulation, synthesis, and metrics
 
@@ -37,7 +37,7 @@ The PCPI-exported version uses the same Group 8 architecture: `22_22_22_22` 8x8 
 
 ## Current measured results
 
-These numbers are based on the current best-effort `22` 8x8 model.
+These numbers are based on the Verilog simulation of the current best-effort `22` 8x8 model.
 
 Random metric estimate over 10,000 vectors for the required Group 8 setting:
 
@@ -75,25 +75,6 @@ Outputs:
 - netlists in `build/synth/`
 - synthesis logs in `build/synth/`
 
-## Resource Consumption
-
-Single configuration resource CSV:
-
-```sh
-make resources LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
-All 32 assigned configurations:
-
-```sh
-make resources32
-```
-
-Outputs:
-
-- `build/resource_analysis/resources.csv`
-- `build/resource_analysis/resources32.csv`
-
 ## Combined Analysis
 
 Real-board combined analysis for all 32 configurations by default:
@@ -102,19 +83,7 @@ Real-board combined analysis for all 32 configurations by default:
 make combined
 ```
 
-Explicit real-board combined analysis with UART capture:
-
-```sh
-make combined_board LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
 If `LOA_K` or any `M0..M3` value is passed to `make combined`, it runs only that one configuration instead of the full sweep.
-
-All 32 configurations in one combined CSV:
-
-```sh
-make combined32 METRIC_SAMPLES=2000
-```
 
 Output:
 
@@ -131,9 +100,11 @@ The combined analyzer collects:
 
 ## Error Metrics
 
+`M0_APPROX` through `M3_APPROX` configure the high-high, high-low, low-high, and low-low 8x8 partial products, respectively. Metrics are measured from the Verilog testbench output.
+
 ```sh
-make metrics LOA_K=4 METRIC_SAMPLES=100000
-make metrics LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6 METRIC_SAMPLES=100000
+make combined LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2 METRIC_SAMPLES=100000
+make combined LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6 METRIC_SAMPLES=100000
 ```
 
 ## Configuration Sweep
@@ -151,19 +122,13 @@ The block labels map as follows:
 - `55` -> `5` local bits approximated per group
 - `66` -> `6` local bits approximated per group
 
-Run the full 32-configuration automation with:
+Run the full 32-configuration board automation with:
 
 ```sh
-make sweep32 METRIC_SAMPLES=10000
+make combined METRIC_SAMPLES=10000
 ```
 
-Quick sweep without synthesis:
-
-```sh
-make sweep32_quick METRIC_SAMPLES=10000
-```
-
-This writes a CSV summary to `build/config_sweep/results.csv`.
+This writes a CSV summary to `build/combined_analysis/combined32.csv`.
 
 ## Group 8 configuration
 
@@ -195,4 +160,4 @@ The hardware consumes `rs1[15:0]` and `rs2[15:0]` and returns the approximate 32
 
 ## Assumption to replace later
 
-If your lab later gives a stricter `22` cell-by-cell block diagram, replace the current best-effort internals of `group8/rtl/v2_8x8_multiplier.v` with that exact architecture and rerun `make sim`, `make synth`, and `make metrics`.
+If your lab later gives a stricter `22` cell-by-cell block diagram, replace the current best-effort internals of `group8/rtl/v2_8x8_multiplier.v` with that exact architecture and rerun `make sim`, `make synth`, and `make combined`.

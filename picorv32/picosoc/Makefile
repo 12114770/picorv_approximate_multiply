@@ -6,7 +6,6 @@ M1_APPROX ?= 2
 M2_APPROX ?= 2
 M3_APPROX ?= 2
 BOARD_APP ?= demo
-PNR_FREQ ?= 13
 
 ifeq ($(BOARD_APP),mul16_dhry)
 FIRMWARE_C = ../../dhrystone_clone/firmware_dhrystone_mul16.c
@@ -17,22 +16,11 @@ FIRMWARE_EXTRA_SRCS =
 endif
 
 GROUP8_RTL_DIR = ../../group8/rtl
-#GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
+GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
 			 $(GROUP8_RTL_DIR)/ppu_block.v \
 			 $(GROUP8_RTL_DIR)/v2_block.v \
 			 $(GROUP8_RTL_DIR)/va_block.v \
 			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
-			 $(GROUP8_RTL_DIR)/v2_8x8_multiplier.v \
-			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
-			 $(GROUP8_RTL_DIR)/e_8x8_multiplier.v \
-			 $(GROUP8_RTL_DIR)/approx_mul16_iter_datapath.v \
-			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_seq.v
-
-GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
-			 $(GROUP8_RTL_DIR)/ppu_block.v \
-			 $(GROUP8_RTL_DIR)/v2_block.v \
- 			 $(GROUP8_RTL_DIR)/va_block.v \
- 			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
 			 $(GROUP8_RTL_DIR)/v2_8x8_multiplier.v \
 			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
 			 $(GROUP8_RTL_DIR)/e_8x8_multiplier.v \
@@ -153,7 +141,7 @@ $(SYNTH_BUILD_DIR)/icebreaker_syn.v: $(SYNTH_BUILD_DIR)/icebreaker.json
 
 # ---- PNR ----
 $(PNR_BUILD_DIR)/icebreaker.asc: icebreaker.pcf $(SYNTH_BUILD_DIR)/icebreaker.json | $(PNR_BUILD_DIR)
-	nextpnr-ice40 --freq $(PNR_FREQ) --up5k --package sg48 --asc $@ --pcf icebreaker.pcf --json $(SYNTH_BUILD_DIR)/icebreaker.json
+	nextpnr-ice40 --up5k --package sg48 --asc $@ --pcf icebreaker.pcf --json $(SYNTH_BUILD_DIR)/icebreaker.json
 
 # ---- Bitstreams ----
 $(BITSTREAM_BUILD_DIR)/icebreaker_flash.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(BITSTREAM_BUILD_DIR)

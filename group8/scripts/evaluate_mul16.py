@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
-import random
+import subprocess
+from pathlib import Path
 
 
 def bit(value: int, index: int) -> int:
@@ -124,58 +125,82 @@ def v2_mul8(a: int, b: int, approx_group_a: int, approx_group_b: int, loa_k: int
     return ((upper << 4) | (group_a & 0xF)) & 0xFFFF
 
 
+def mul8(a: int, b: int, approx: int, loa_k: int) -> int:
+    if approx == 0:
+        return (a * b) & 0xFFFF
+    return v2_mul8(a, b, approx, approx, loa_k)
+
+
 def approx_mul16(a: int, b: int, k: int, configs: tuple[int, int, int, int]) -> int:
     a &= 0xFFFF
     b &= 0xFFFF
-    m0 = v2_mul8(a & 0xFF, b & 0xFF, configs[0], configs[0], k)
-    m1 = v2_mul8(a & 0xFF, (b >> 8) & 0xFF, configs[1], configs[1], k)
-    m2 = v2_mul8((a >> 8) & 0xFF, b & 0xFF, configs[2], configs[2], k)
-    m3 = v2_mul8((a >> 8) & 0xFF, (b >> 8) & 0xFF, configs[3], configs[3], k)
+    m0 = mul8((a >> 8) & 0xFF, (b >> 8) & 0xFF, configs[0], k)
+    m1 = mul8((a >> 8) & 0xFF, b & 0xFF, configs[1], k)
+    m2 = mul8(a & 0xFF, (b >> 8) & 0xFF, configs[2], k)
+    m3 = mul8(a & 0xFF, b & 0xFF, configs[3], k)
 
-    part_sum0 = ((m0 >> 8) + (m1 & 0xFF)) & 0xFF
-    part_sum1 = (part_sum0 + (m2 & 0xFF)) & 0xFF
-    part_sum2 = ((m2 >> 8) + (m1 >> 8)) & 0xFF
-    part_sum3 = (part_sum2 + (m3 & 0xFF)) & 0xFF
+    return ((m0 << 16) + (m1 << 8) + (m2 << 8) + m3) & 0xFFFFFFFF
 
-    return (((m3 >> 8) << 24) | (part_sum3 << 16) | (part_sum1 << 8) | (m0 & 0xFF)) & 0xFFFFFFFF
+
+def run_simulation_metrics(args: argparse.Namespace) -> None:
+    root = Path(__file__).resolve().parents[2]
+    sim_dir = root / "build" / "sim"
+    sim_dir.mkdir(parents=True, exist_ok=True)
+    sim_out = sim_dir / f"metrics_k{args.k}_{args.m0}_{args.m1}_{args.m2}_{args.m3}_{args.samples}.vvp"
+
+    design = [
+        "group8/rtl/loa_adder.v",
+        "group8/rtl/ppu_block.v",
+        "group8/rtl/v2_block.v",
+        "group8/rtl/va_block.v",
+        "group8/rtl/v2_8x4_multiplier.v",
+        "group8/rtl/v2_8x8_multiplier.v",
+        "group8/rtl/e_8x4_multiplier.v",
+        "group8/rtl/e_8x8_multiplier.v",
+        "group8/rtl/approx_mul16_loa.v",
+        "group8/tb/a_16x16_mul_tb.v",
+    ]
+
+    compile_cmd = [
+        "iverilog",
+        "-g2012",
+        "-o",
+        str(sim_out),
+        "-s",
+        "approx_mul16_loa_tb",
+        "-P",
+        f"approx_mul16_loa_tb.LOA_K={args.k}",
+        "-P",
+        f"approx_mul16_loa_tb.M0_APPROX={args.m0}",
+        "-P",
+        f"approx_mul16_loa_tb.M1_APPROX={args.m1}",
+        "-P",
+        f"approx_mul16_loa_tb.M2_APPROX={args.m2}",
+        "-P",
+        f"approx_mul16_loa_tb.M3_APPROX={args.m3}",
+        "-P",
+        f"approx_mul16_loa_tb.TESTS={args.samples}",
+        *design,
+    ]
+    subprocess.run(compile_cmd, cwd=root, check=True)
+    proc = subprocess.run(["vvp", str(sim_out)], cwd=root, check=True, text=True, capture_output=True)
+    print(proc.stdout, end="")
+    if proc.stderr:
+        print(proc.stderr, end="")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Estimate Group 8 structural multiplier error metrics.")
+    parser = argparse.ArgumentParser(description="Measure Group 8 multiplier error metrics with the Verilog testbench.")
     parser.add_argument("--k", type=int, choices=(4, 6), required=True, help="LOA approximation width")
     parser.add_argument("--m0", type=int, default=2, help="M0 approximation setting: 0,2,4,5,6")
     parser.add_argument("--m1", type=int, default=2, help="M1 approximation setting: 0,2,4,5,6")
     parser.add_argument("--m2", type=int, default=2, help="M2 approximation setting: 0,2,4,5,6")
     parser.add_argument("--m3", type=int, default=2, help="M3 approximation setting: 0,2,4,5,6")
     parser.add_argument("--samples", type=int, default=100000, help="number of random input pairs")
-    parser.add_argument("--seed", type=int, default=8, help="random seed")
+    parser.add_argument("--seed", type=int, default=8, help="kept for compatibility; simulation uses $urandom")
     args = parser.parse_args()
 
-    rng = random.Random(args.seed)
-    max_exact = 0xFFFF * 0xFFFF
-    nmed_acc = 0.0
-    mred_acc = 0.0
-    mred_count = 0
-
-    configs = (args.m0, args.m1, args.m2, args.m3)
-
-    for _ in range(args.samples):
-        a = rng.randrange(0, 1 << 16)
-        b = rng.randrange(0, 1 << 16)
-        exact = a * b
-        approx = approx_mul16(a, b, args.k, configs)
-        error = abs(exact - approx)
-        nmed_acc += error / max_exact
-        if exact != 0:
-            mred_acc += error / exact
-            mred_count += 1
-
-    print(f"LOA k={args.k}")
-    print(f"config={args.m0}_{args.m1}_{args.m2}_{args.m3}")
-    print(f"samples={args.samples}")
-    print(f"NMED={nmed_acc / args.samples:.10f}")
-    print(f"MRED={mred_acc / max(mred_count, 1):.10f}")
-    print("note=metrics use the structural v2/8x4 RTL model")
+    run_simulation_metrics(args)
 
 
 if __name__ == "__main__":
