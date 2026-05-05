@@ -17,14 +17,29 @@ FIRMWARE_EXTRA_SRCS =
 endif
 
 GROUP8_RTL_DIR = ../../group8/rtl
+#GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
+			 $(GROUP8_RTL_DIR)/ppu_block.v \
+			 $(GROUP8_RTL_DIR)/v2_block.v \
+			 $(GROUP8_RTL_DIR)/va_block.v \
+			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/v2_8x8_multiplier.v \
+			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/e_8x8_multiplier.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_iter_datapath.v \
+			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_seq.v
+
 GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
 			 $(GROUP8_RTL_DIR)/ppu_block.v \
 			 $(GROUP8_RTL_DIR)/v2_block.v \
-			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
-			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
+ 			 $(GROUP8_RTL_DIR)/va_block.v \
+ 			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
 			 $(GROUP8_RTL_DIR)/v2_8x8_multiplier.v \
-			 $(GROUP8_RTL_DIR)/approx_mul16_iter_datapath.v \
-			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_seq.v
+			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/e_8x8_multiplier.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_loa.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_loa_k4.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_loa_k6.v \
+			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_approx.v
 
 # Build directories:
 BUILD_DIR := build
@@ -159,7 +174,7 @@ $(SIM_BUILD_DIR)/icebreaker_syn_tb.vvp: icebreaker_tb.v $(SYNTH_BUILD_DIR)/icebr
 
 # ---- Testbench for SPI Flash Model ----
 $(SIM_BUILD_DIR)/spiflash_tb.vvp: spiflash.v spiflash_tb.v | $(SIM_BUILD_DIR)
-	iverilog -s testbench -o $@ $^
+	iverilog -g2012 -s testbench -o $@ $^
 
 # --- Build dirs ---
 
