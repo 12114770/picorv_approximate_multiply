@@ -31,6 +31,7 @@ M0_APPROX ?= 2
 M1_APPROX ?= 2
 M2_APPROX ?= 2
 M3_APPROX ?= 2
+BOARD_APP ?= demo
 CFG_TAG ?= $(M0_APPROX)_$(M1_APPROX)_$(M2_APPROX)_$(M3_APPROX)
 SIM_OUT ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K).vvp
 VCD ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K).vcd
@@ -40,6 +41,7 @@ SYNTH_OUT ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG)_netlist.v
 SYNTH_LOG ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG).log
 METRIC_SAMPLES ?= 10000
 SERIAL_PORT ?= /dev/ttyUSB1
+PNR_FREQ ?= 13
 
 ifeq ($(filter command line,$(origin LOA_K) $(origin M0_APPROX) $(origin M1_APPROX) $(origin M2_APPROX) $(origin M3_APPROX)),)
 COMBINED_ARGS := --all --output build/combined_analysis/combined32.csv
@@ -81,6 +83,7 @@ help:
 	  '  TOP=approx_mul16_loa                  Synthesis top module' \
 	  '  M0_APPROX..M3_APPROX=0|2|4|5|6        Per-block E/22/44/55/66 selection' \
 	  '  BOARD_APP=demo|mul16_dhry             Select PicoSoC firmware app' \
+	  '  PNR_FREQ=13                           nextpnr target frequency in MHz' \
 	  '  SERIAL_PORT=/dev/ttyUSB1              Serial port for board UART capture' \
 	  '  DESIGN="file1.v file2.v ..."          Verilog design file list' \
 	  '  VCD=build/sim/custom.vcd              Simulation waveform path' \
@@ -107,21 +110,21 @@ make_prog:
 	$(MAKE) -C picorv32/picosoc prog_bram
 
 board_sim:
-	$(MAKE) -C picorv32/picosoc sim BOARD_APP=$(BOARD_APP) LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX)
+	$(MAKE) -C picorv32/picosoc sim BOARD_APP=$(BOARD_APP) LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX) PNR_FREQ=$(PNR_FREQ)
 
 board_pnr:
-	$(MAKE) -C picorv32/picosoc all BOARD_APP=$(BOARD_APP) LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX)
+	$(MAKE) -C picorv32/picosoc all BOARD_APP=$(BOARD_APP) LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX) PNR_FREQ=$(PNR_FREQ)
 
 board_prog:
-	$(MAKE) -C picorv32/picosoc prog_bram BOARD_APP=$(BOARD_APP) LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX)
+	$(MAKE) -C picorv32/picosoc prog_bram BOARD_APP=$(BOARD_APP) LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX) PNR_FREQ=$(PNR_FREQ)
 
 board_test: board_pnr board_prog
 
 board_bench_sim:
-	$(MAKE) board_sim BOARD_APP=mul16_dhry LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX)
+	$(MAKE) board_sim BOARD_APP=mul16_dhry LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX) PNR_FREQ=$(PNR_FREQ)
 
 board_bench_test:
-	$(MAKE) board_test BOARD_APP=mul16_dhry LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX)
+	$(MAKE) board_test BOARD_APP=mul16_dhry LOA_K=$(LOA_K) M0_APPROX=$(M0_APPROX) M1_APPROX=$(M1_APPROX) M2_APPROX=$(M2_APPROX) M3_APPROX=$(M3_APPROX) PNR_FREQ=$(PNR_FREQ)
 
 sim: $(SIM_OUT) $(SIM_REF)
 	$(VVP) $(SIM_OUT) +vcd=$(VCD) +ref=$(SIM_REF)

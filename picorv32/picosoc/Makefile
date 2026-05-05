@@ -6,6 +6,7 @@ M1_APPROX ?= 2
 M2_APPROX ?= 2
 M3_APPROX ?= 2
 BOARD_APP ?= demo
+PNR_FREQ ?= 13
 
 ifeq ($(BOARD_APP),mul16_dhry)
 FIRMWARE_C = ../../dhrystone_clone/firmware_dhrystone_mul16.c
@@ -137,7 +138,7 @@ $(SYNTH_BUILD_DIR)/icebreaker_syn.v: $(SYNTH_BUILD_DIR)/icebreaker.json
 
 # ---- PNR ----
 $(PNR_BUILD_DIR)/icebreaker.asc: icebreaker.pcf $(SYNTH_BUILD_DIR)/icebreaker.json | $(PNR_BUILD_DIR)
-	nextpnr-ice40 --freq 13 --up5k --package sg48 --asc $@ --pcf icebreaker.pcf --json $(SYNTH_BUILD_DIR)/icebreaker.json
+	nextpnr-ice40 --freq $(PNR_FREQ) --up5k --package sg48 --asc $@ --pcf icebreaker.pcf --json $(SYNTH_BUILD_DIR)/icebreaker.json
 
 # ---- Bitstreams ----
 $(BITSTREAM_BUILD_DIR)/icebreaker_flash.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(BITSTREAM_BUILD_DIR)

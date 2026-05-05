@@ -64,6 +64,20 @@ def run_capture(cmd: list[str], workdir: Path) -> str:
     return proc.stdout + proc.stderr
 
 
+def run_pnr_capture(cmd: list[str], workdir: Path, asc_path: Path) -> tuple[str, int]:
+    print("+", " ".join(cmd), flush=True)
+    proc = subprocess.run(cmd, cwd=workdir, text=True, capture_output=True)
+    output = proc.stdout + proc.stderr
+    if proc.returncode != 0:
+        if proc.stdout:
+            print(proc.stdout, end="", flush=True)
+        if proc.stderr:
+            print(proc.stderr, end="", flush=True)
+        if not asc_path.exists():
+            raise subprocess.CalledProcessError(proc.returncode, cmd, output=proc.stdout, stderr=proc.stderr)
+    return output, proc.returncode
+
+
 def parse_metrics(output: str) -> dict[str, str]:
     return {
         "nmed": _match(output, r"NMED=([0-9.]+)"),
@@ -192,7 +206,11 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
     run_capture(["make", "synth", *make_args], root)
     log_path = root / "build" / "synth" / f"approx_mul16_loa_k{k}_{m0}_{m1}_{m2}_{m3}.log"
     resource_data = parse_resources(log_path.read_text())
-    pnr_out = run_capture(["make", "board_pnr", "BOARD_APP=mul16_dhry", *make_args], root)
+    pnr_out, pnr_returncode = run_pnr_capture(
+        ["make", "board_pnr", "BOARD_APP=mul16_dhry", *make_args],
+        root,
+        root / "picorv32" / "picosoc" / "build" / "pnr" / "icebreaker.asc",
+    )
 
     bench_mode = "board" if board else "simulation"
     if board:
@@ -212,6 +230,8 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
     row.update(parse_metrics(metrics_out))
     row.update(resource_data)
     row.update(parse_pnr(pnr_out))
+    row["pnr_status"] = "pass" if pnr_returncode == 0 else "timing_fail"
+    row["pnr_returncode"] = str(pnr_returncode)
     row.update(parse_bench_lines(bench_text))
 
     print(
@@ -269,8 +289,14 @@ def main() -> None:
     else:
         rows.append(analyze_one(root, args.k, args.m0, args.m1, args.m2, args.m3, args.samples, args.board, args.serial_port, args.baud, args.timeout))
 
+    fieldnames = list(rows[0].keys())
+    for row in rows[1:]:
+        for key in row:
+            if key not in fieldnames:
+                fieldnames.append(key)
+
     with out_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
 
