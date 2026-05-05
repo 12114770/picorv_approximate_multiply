@@ -187,7 +187,7 @@ module picosoc (
 		.irq         (irq        )
 	);
 
-	picorv32_pcpi_mul16_seq #(
+	picorv32_pcpi_mul16_approx #(
 		.LOA_K(MUL16_LOA_K),
 		.M0_APPROX(MUL16_M0_APPROX),
 		.M1_APPROX(MUL16_M1_APPROX),

@@ -35,16 +35,13 @@ module v2_8x4_multiplier #(
     assign s_0[0] = a[0] & b[0];
 	//Row 1
 	generate 
-		for (i = 0; i < 7; i++) begin : v2_arr_1
-			v2 v2_block(
+		for (i = 0; i < 7; i++) begin : va_arr_1
+			va va_block(
 				.a_i(a[i +1]),
 				.a_j(a[i]),
 				.b_i(b[0]),
 				.b_j(b[1]),
-				.c_in_i(1'b0),
-				.c_in_j(c_1[i]),
 				.s_out_j(s_1[i]),
-				.c_out_i(),
 				.c_out_j(c_1[i+1])
 			);
 		end
@@ -92,7 +89,7 @@ module v2_8x4_multiplier #(
 				.a_j(a[i]),
 				.b_i(b[2]),
 				.b_j(b[3]),
-				.s_in(s_1[i]),
+				.s_in(s_1[i+2]),
 				.c_in_i(c_2[i+1]),
 				.c_in_j(c_3[i]),
 				.s_out(s_3[i]),

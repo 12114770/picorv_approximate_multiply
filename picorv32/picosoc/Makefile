@@ -16,14 +16,29 @@ FIRMWARE_EXTRA_SRCS =
 endif
 
 GROUP8_RTL_DIR = ../../group8/rtl
+#GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
+			 $(GROUP8_RTL_DIR)/ppu_block.v \
+			 $(GROUP8_RTL_DIR)/v2_block.v \
+			 $(GROUP8_RTL_DIR)/va_block.v \
+			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/v2_8x8_multiplier.v \
+			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/e_8x8_multiplier.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_iter_datapath.v \
+			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_seq.v
+
 GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
 			 $(GROUP8_RTL_DIR)/ppu_block.v \
 			 $(GROUP8_RTL_DIR)/v2_block.v \
-			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
-			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
+ 			 $(GROUP8_RTL_DIR)/va_block.v \
+ 			 $(GROUP8_RTL_DIR)/v2_8x4_multiplier.v \
 			 $(GROUP8_RTL_DIR)/v2_8x8_multiplier.v \
-			 $(GROUP8_RTL_DIR)/approx_mul16_iter_datapath.v \
-			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_seq.v
+			 $(GROUP8_RTL_DIR)/e_8x4_multiplier.v \
+			 $(GROUP8_RTL_DIR)/e_8x8_multiplier.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_loa.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_loa_k4.v \
+			 $(GROUP8_RTL_DIR)/approx_mul16_loa_k6.v \
+			 $(GROUP8_RTL_DIR)/picorv32_pcpi_mul16_approx.v
 
 # Build directories:
 BUILD_DIR := build
@@ -151,14 +166,14 @@ $(BITSTREAM_BUILD_DIR)/icebreaker_bram.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(
 # ---- Simulation ----
 $(SIM_BUILD_DIR)/icebreaker_tb.vpp: icebreaker_tb.v icebreaker.v ice40up5k_spram.v spimemio.v simpleuart.v \
 	picosoc.v ../picorv32.v $(GROUP8_RTL) spiflash.v | $(SIM_BUILD_DIR)
-	iverilog -v -s testbench -P testbench.LOA_K=$(LOA_K) -P testbench.M0_APPROX=$(M0_APPROX) -P testbench.M1_APPROX=$(M1_APPROX) -P testbench.M2_APPROX=$(M2_APPROX) -P testbench.M3_APPROX=$(M3_APPROX) -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS
+	iverilog -g2012 -v -s testbench -P testbench.LOA_K=$(LOA_K) -P testbench.M0_APPROX=$(M0_APPROX) -P testbench.M1_APPROX=$(M1_APPROX) -P testbench.M2_APPROX=$(M2_APPROX) -P testbench.M3_APPROX=$(M3_APPROX) -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS
 
 $(SIM_BUILD_DIR)/icebreaker_syn_tb.vvp: icebreaker_tb.v $(SYNTH_BUILD_DIR)/icebreaker_syn.v spiflash.v | $(SIM_BUILD_DIR)
-	iverilog -s testbench -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS -DPOST_SYNTH_SIM
+	iverilog -g2012 -s testbench -o $@ $^ `yosys-config --datdir/ice40/cells_sim.v` -DNO_ICE40_DEFAULT_ASSIGNMENTS -DPOST_SYNTH_SIM
 
 # ---- Testbench for SPI Flash Model ----
 $(SIM_BUILD_DIR)/spiflash_tb.vvp: spiflash.v spiflash_tb.v | $(SIM_BUILD_DIR)
-	iverilog -s testbench -o $@ $^
+	iverilog -g2012 -s testbench -o $@ $^
 
 # --- Build dirs ---
 

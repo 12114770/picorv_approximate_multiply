@@ -31,7 +31,7 @@ module e_8x4_multiplier
             for (i = 0; i < 7; i = i + 1) begin : block
                 ppu1 ppu(
                     .a(a[i]),
-                    .b(b[1]),
+                    .b(b[r]),
                     .s_in(s[r-1][i+1]),
                     .c_in(c[r][i]),
                     .s_out(s[r][i]),
@@ -40,7 +40,7 @@ module e_8x4_multiplier
             end
             ppu1 block_7_ppu(
                 .a(a[7]),
-                .b(b[1]),
+                .b(b[r]),
                 .s_in(c[r-1][8]),
                 .c_in(c[r][7]),
                 .s_out(s[r][7]),

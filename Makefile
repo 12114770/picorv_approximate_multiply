@@ -16,14 +16,16 @@ SW_DIR ?= group8/sw
 DESIGN ?= 	$(RTL_DIR)/loa_adder.v \
 			$(RTL_DIR)/ppu_block.v \
 			$(RTL_DIR)/v2_block.v \
+			$(RTL_DIR)/va_block.v \
 			$(RTL_DIR)/v2_8x4_multiplier.v \
-			$(RTL_DIR)/e_8x4_multiplier.v \
 			$(RTL_DIR)/v2_8x8_multiplier.v \
+			$(RTL_DIR)/e_8x4_multiplier.v \
+			$(RTL_DIR)/e_8x8_multiplier.v \
 			$(RTL_DIR)/approx_mul16_loa.v \
 			$(RTL_DIR)/approx_mul16_loa_k4.v \
 			$(RTL_DIR)/approx_mul16_loa_k6.v \
 			$(RTL_DIR)/picorv32_pcpi_mul16_approx.v
-TESTBENCH ?= $(TB_DIR)/approx_mul16_loa_tb.v
+TESTBENCH ?= $(TB_DIR)/a_16x16_mul_tb.v#approx_mul16_loa_tb.v#
 TBTOP ?= approx_mul16_loa_tb
 TOP ?= approx_mul16_loa
 LOA_K ?= 4
@@ -32,7 +34,7 @@ M1_APPROX ?= 2
 M2_APPROX ?= 2
 M3_APPROX ?= 2
 CFG_TAG ?= $(M0_APPROX)_$(M1_APPROX)_$(M2_APPROX)_$(M3_APPROX)
-SIM_OUT ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K).vvp
+SIM_OUT ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K)_m$(M0_APPROX)_$(M1_APPROX)_$(M2_APPROX)_$(M3_APPROX).vvp
 VCD ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K).vcd
 SYNTH_OUT ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG)_netlist.v
 SYNTH_LOG ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG).log
@@ -149,6 +151,14 @@ combined_board:
 combined32:
 	$(PYTHON) group8/scripts/analyze_combined.py --all --samples $(METRIC_SAMPLES) --output build/combined_analysis/combined32.csv
 
+sim_sweep:
+	@echo "Running 32 configuration sweep tb ..."
+	$(PYTHON) group8/scripts/sim_sweep.py
+
+synth_sweep:
+	@echo "Running 32 configuration sweep synthesis ..."
+	$(PYTHON) group8/scripts/analyze_resources.py --all
+
 sweep32:
 	$(PYTHON) group8/scripts/run_all_configs.py --samples $(METRIC_SAMPLES)
 
@@ -170,4 +180,4 @@ $(BUILD_DIR):
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: help sim synth metrics resources resources32 combined combined_board combined32 clean make_prog sweep32 sweep32_full sweep32_quick board_sim board_pnr board_prog board_test board_bench_sim board_bench_test
+.PHONY: help sim synth metrics resources resources32 combined combined_board combined32 clean make_prog sweep32 sweep32_full sweep32_quick board_sim board_pnr board_prog board_test board_bench_sim board_bench_test sim_sweep
