@@ -26,7 +26,7 @@ The original course material shown in the workspace is not sufficient to reconst
 - the selected approximation level suppresses a configurable number of least-significant local bits in each group
 - supported block families are `E`, `22`, `44`, `55`, and `66`
 
-This is enough to run simulations, synthesis, metric estimation, full configuration sweeps, and PicoSoC integration consistently.
+This is enough to run simulations, synthesis, simulation-backed metrics, full configuration sweeps, and PicoSoC integration consistently.
 
 ## Group 8 Default
 
@@ -56,6 +56,7 @@ Table suffix to LOA width:
 - `66 -> 6`
 
 These numbers are passed as `M0_APPROX`, `M1_APPROX`, `M2_APPROX`, and `M3_APPROX`.
+The `M*` order is high-high, high-low, low-high, low-low: `M0` configures `a[15:8] * b[15:8]`, and `M3` configures `a[7:0] * b[7:0]`.
 
 ## Repository Layout
 
@@ -68,9 +69,9 @@ These numbers are passed as `M0_APPROX`, `M1_APPROX`, `M2_APPROX`, and `M3_APPRO
 - `group8/rtl/approx_mul16_iter_datapath.v`: sequential datapath used by the PCPI core
 - `group8/rtl/picorv32_pcpi_mul16_approx.v`: combinational PCPI wrapper
 - `group8/rtl/picorv32_pcpi_mul16_seq.v`: multi-cycle FSM PCPI core
-- `group8/tb/approx_mul16_loa_tb.v`: top-level multiplier testbench
+- `group8/tb/a_16x16_mul_tb.v`: top-level multiplier and metric testbench
 - `group8/tb/picorv32_pcpi_mul16_tb.v`: PCPI testbench
-- `group8/scripts/evaluate_mul16.py`: metric estimation for one configuration
+- `group8/scripts/evaluate_mul16.py`: simulation-backed metric measurement for one configuration
 - `group8/scripts/run_all_configs.py`: automated sweep of all 32 assigned configurations
 - `group8/sw/mul16.h`: software macro for the custom instruction
 - `picorv32/picosoc/`: PicoSoC/iCEBreaker build and run flow
@@ -82,34 +83,18 @@ The root `Makefile` provides these targets:
 - `help`: print usage
 - `sim`: compile and run the selected Verilog testbench
 - `synth`: synthesize the selected design with Yosys
-- `metrics`: estimate `NMED` and `MRED`
-- `resources`: synthesize one configuration and write resource CSV output
-- `resources32`: synthesize all 32 assigned configurations and write resource CSV output
-- `combined`: collect metrics, resource data, timing, and real-board benchmark output into one CSV
-- `combined_board`: same as `combined`, but captures a real connected board run over UART
-- `combined32`: run the simulation-backed combined analysis for all 32 configurations
-- `sweep32`: run all 32 assigned configurations with sim, synth, and metrics
-- `sweep32_full`: explicit alias for the full 32-config sweep
-- `sweep32_quick`: run all 32 assigned configurations without synthesis
-- `board_sim`: run the PicoSoC/iCEBreaker simulation for the selected configuration
-- `board_pnr`: run iCEBreaker place-and-route for the selected configuration
-- `board_prog`: program the selected configuration to iCEBreaker BRAM
-- `board_test`: build and program the selected configuration for on-board execution
-- `board_bench_sim`: run the cloned Dhrystone + `mul16` board benchmark in simulation
-- `board_bench_test`: build and program the cloned Dhrystone + `mul16` board benchmark
-- `make_prog`: build and program the iCEBreaker BRAM image through the PicoSoC flow
+- `combined`: sweep configs and write one CSV with metrics, resource counts, PnR timing, and real-board benchmark data
 - `clean`: remove generated root build artifacts
 
 Important variables:
 
 - `LOA_K`: LOA width, usually `4` or `6`
-- `M0_APPROX`, `M1_APPROX`, `M2_APPROX`, `M3_APPROX`: per-block configuration values `0|2|4|5|6`
-- `BOARD_APP`: board firmware selection, `demo` or `mul16_dhry`
+- `M0_APPROX`, `M1_APPROX`, `M2_APPROX`, `M3_APPROX`: high-high, high-low, low-high, low-low block configuration values `0|2|4|5|6`
 - `SERIAL_PORT`: serial port for real board capture, default `/dev/ttyUSB1`
 - `TESTBENCH`: testbench source file
 - `TBTOP`: testbench top module
 - `TOP`: synthesis top module
-- `METRIC_SAMPLES`: number of random vectors for metric estimation
+- `METRIC_SAMPLES`: number of random vectors for simulation-backed metrics
 - `VCD`: waveform file path
 
 ## Common Commands
@@ -132,39 +117,17 @@ Group 8 default synthesis:
 make synth LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
 ```
 
-Group 8 default metrics:
+Full real-board combined sweep:
 
 ```sh
-make metrics LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2 METRIC_SAMPLES=10000
+make combined METRIC_SAMPLES=10000 SERIAL_PORT=/dev/ttyUSB1
 ```
 
-Group 8 default resource analysis:
+Single-configuration combined run:
 
 ```sh
-make resources LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
+make combined LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
 ```
-
-Full 32-configuration sweep:
-
-```sh
-make sweep32 METRIC_SAMPLES=10000
-```
-
-Quick 32-configuration sweep without synthesis:
-
-```sh
-make sweep32_quick METRIC_SAMPLES=10000
-```
-
-All-configuration resource CSV:
-
-```sh
-make resources32
-```
-
-The sweep writes:
-
-- `build/config_sweep/results.csv`
 
 ## 32-Configuration Automation
 
@@ -228,41 +191,6 @@ The metric script computes:
 
 by comparing the approximate 16x16 result against exact unsigned multiplication over random input vectors.
 
-## Resource Consumption Analysis
-
-The resource analyzer uses Yosys synthesis logs and writes CSV summaries.
-
-Single configuration:
-
-```sh
-make resources LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
-Output:
-
-- `build/resource_analysis/resources.csv`
-
-All 32 assigned configurations:
-
-```sh
-make resources32
-```
-
-Output:
-
-- `build/resource_analysis/resources32.csv`
-
-The CSV includes:
-
-- configuration id
-- table label
-- LOA `k`
-- `M0..M3` settings
-- total synthesized cells
-- hierarchy cell count
-- `$_AND_`, `$_MUX_`, `$_OR_`, `$_XOR_` counts
-- wire and port counts
-
 ## Combined Analysis
 
 The combined analyzer collects:
@@ -279,19 +207,7 @@ Real-board combined analysis for all 32 configurations by default:
 make combined
 ```
 
-Explicit real-board combined analysis over UART:
-
-```sh
-make combined_board LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
 If you pass `LOA_K` or any `M0..M3` override to `make combined`, it switches to single-configuration mode and writes `build/combined_analysis/combined.csv` instead of the full `combined32.csv`.
-
-All 32 configurations in one combined CSV:
-
-```sh
-make combined32 METRIC_SAMPLES=2000
-```
 
 Output:
 
@@ -343,99 +259,48 @@ Relevant files:
 - `group8/rtl/approx_mul16_iter_datapath.v`
 - `group8/rtl/picorv32_pcpi_mul16_seq.v`
 
-Run PicoSoC simulation:
-
-```sh
-make -C picorv32/picosoc sim
-make board_sim LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6
-```
-
-Run place-and-route for iCEBreaker:
-
-```sh
-make -C picorv32/picosoc pnr
-make board_pnr LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6
-```
-
-Program BRAM image:
-
-```sh
-make make_prog
-make board_prog LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
-Build and program a selected configuration in one step:
-
-```sh
-make board_test LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
-Run the cloned Dhrystone + `mul16` benchmark in simulation:
-
-```sh
-make board_bench_sim LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
-Build and program the cloned Dhrystone + `mul16` benchmark:
-
-```sh
-make board_bench_test LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
+The root workflow keeps PicoSoC board steps inside `make combined`. Use the `picorv32/picosoc` Makefile directly only for low-level debugging.
 
 ## Full Board Run
 
-If the iCEBreaker is connected, this is the recommended end-to-end flow.
-
-1. Open a serial monitor on the board UART at `115200` baud using your preferred terminal program.
-2. From the repository root, build and program the normal `mul16` demo:
+If the iCEBreaker is connected, this is the recommended end-to-end flow:
 
 ```sh
-make board_test LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
+make combined SERIAL_PORT=/dev/ttyUSB1 METRIC_SAMPLES=10000
 ```
 
-3. Watch the UART output for the demo banner and checksum.
-4. For the benchmark-style run that executes Dhrystone and then the custom `mul16` benchmark, use:
+For one selected configuration:
 
 ```sh
-make board_bench_test LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
+make combined LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2 SERIAL_PORT=/dev/ttyUSB1
 ```
 
-5. Watch the UART output for:
+`combined` builds, places/routes, programs the BRAM image, captures the benchmark UART output, and writes a CSV. The CSV includes:
 
 - the Dhrystone banner and summary
 - the `mul16 iters`, `mul16 cycles`, and `mul16 checksum` lines
+- synthesis resource counts
+- PnR timing data
+- `NMED` and `MRED`
 
-6. The LED register is also updated with the final checksum, so the board LEDs provide a simple visible completion indicator.
-
-Useful intermediate commands:
-
-```sh
-make board_sim LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-make board_bench_sim LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-make board_pnr LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-make board_prog LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2
-```
-
-To test a different table entry on hardware, change both the LOA and block settings. Example:
+To test a different table entry on hardware, change both the LOA and block settings:
 
 ```sh
-make board_bench_test LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6
+make combined LOA_K=6 M0_APPROX=0 M1_APPROX=6 M2_APPROX=6 M3_APPROX=6 SERIAL_PORT=/dev/ttyUSB1
 ```
 
 That corresponds to `E_66_66_66 b`.
 
-The current integrated build has already been verified to pass the `13 MHz` iCEBreaker target in the PNR flow.
+The combined flow records the max frequency reported by nextpnr for each configuration.
 
 Task 3 build placement:
 
-- synthesis/place-and-route for combined analysis now uses `picorv32/scripts/icestorm/Makefile` with `make all`
-- board programming still uses `make prog_bram` in `picorv32/picosoc/Makefile`
+- root-level synthesis uses `make synth`
+- combined place-and-route/programming uses `picorv32/picosoc/Makefile` internally
 
 On-board testing notes:
 
-- `board_test` automates build, place-and-route, and BRAM programming
-- `board_bench_test` does the same using the alternate firmware from `dhrystone_clone/`
-- after programming, the firmware runs `100` custom `mul16` instructions automatically
+- `combined` uses the alternate benchmark firmware from `dhrystone_clone/`
 - the benchmark firmware runs upstream Dhrystone first and then a dedicated `mul16` benchmark loop
 - expected status is visible via UART output and the LED checksum written by firmware
 - the actual physical UART capture depends on your host-side serial setup and board connection
@@ -465,11 +330,11 @@ The following have been exercised in this workspace:
 
 - root-level multiplier simulation for Group 8 default
 - root-level simulation for a mixed configuration
-- root-level metric estimation
+- root-level simulation-backed metric measurement
 - root-level synthesis
-- quick 32-configuration sweep generation
+- metric-only 32-configuration sweep generation
 - PicoSoC simulation on iCEBreaker testbench
-- PicoSoC place-and-route meeting the 13 MHz target
+- PicoSoC place-and-route max-frequency reporting
 
 ## Limitations
 

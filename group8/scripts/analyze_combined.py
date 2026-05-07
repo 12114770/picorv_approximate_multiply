@@ -54,8 +54,28 @@ def decode(token: str) -> int:
 
 def run_capture(cmd: list[str], workdir: Path) -> str:
     print("+", " ".join(cmd), flush=True)
-    proc = subprocess.run(cmd, cwd=workdir, check=True, text=True, capture_output=True)
+    proc = subprocess.run(cmd, cwd=workdir, text=True, capture_output=True)
+    if proc.returncode != 0:
+        if proc.stdout:
+            print(proc.stdout, end="", flush=True)
+        if proc.stderr:
+            print(proc.stderr, end="", flush=True)
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output=proc.stdout, stderr=proc.stderr)
     return proc.stdout + proc.stderr
+
+
+def run_pnr_capture(cmd: list[str], workdir: Path, asc_path: Path) -> tuple[str, int]:
+    print("+", " ".join(cmd), flush=True)
+    proc = subprocess.run(cmd, cwd=workdir, text=True, capture_output=True)
+    output = proc.stdout + proc.stderr
+    if proc.returncode != 0:
+        if proc.stdout:
+            print(proc.stdout, end="", flush=True)
+        if proc.stderr:
+            print(proc.stderr, end="", flush=True)
+        if not asc_path.exists():
+            raise subprocess.CalledProcessError(proc.returncode, cmd, output=proc.stdout, stderr=proc.stderr)
+    return output, proc.returncode
 
 
 def parse_metrics(output: str) -> dict[str, str]:
@@ -63,6 +83,47 @@ def parse_metrics(output: str) -> dict[str, str]:
         "nmed": _match(output, r"NMED=([0-9.]+)"),
         "mred": _match(output, r"MRED=([0-9.]+)"),
     }
+
+
+def run_metric_sim(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples: int) -> str:
+    sim_dir = root / "build" / "sim"
+    sim_dir.mkdir(parents=True, exist_ok=True)
+    sim_out = sim_dir / f"combined_metrics_k{k}_{m0}_{m1}_{m2}_{m3}_{samples}.vvp"
+    design = [
+        "group8/rtl/loa_adder.v",
+        "group8/rtl/ppu_block.v",
+        "group8/rtl/v2_block.v",
+        "group8/rtl/va_block.v",
+        "group8/rtl/v2_8x4_multiplier.v",
+        "group8/rtl/v2_8x8_multiplier.v",
+        "group8/rtl/e_8x4_multiplier.v",
+        "group8/rtl/e_8x8_multiplier.v",
+        "group8/rtl/approx_mul16_loa.v",
+        "group8/tb/a_16x16_mul_tb.v",
+    ]
+    compile_cmd = [
+        "iverilog",
+        "-g2012",
+        "-o",
+        str(sim_out),
+        "-s",
+        "approx_mul16_loa_tb",
+        "-P",
+        f"approx_mul16_loa_tb.LOA_K={k}",
+        "-P",
+        f"approx_mul16_loa_tb.M0_APPROX={m0}",
+        "-P",
+        f"approx_mul16_loa_tb.M1_APPROX={m1}",
+        "-P",
+        f"approx_mul16_loa_tb.M2_APPROX={m2}",
+        "-P",
+        f"approx_mul16_loa_tb.M3_APPROX={m3}",
+        "-P",
+        f"approx_mul16_loa_tb.TESTS={samples}",
+        *design,
+    ]
+    run_capture(compile_cmd, root)
+    return run_capture(["vvp", str(sim_out)], root)
 
 
 def parse_resources(log_text: str) -> dict[str, str]:
@@ -108,10 +169,11 @@ def _match(text: str, pattern: str) -> str:
     return m.group(1) if m else ""
 
 
-def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, make_args: list[str]) -> str:
+def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, picosoc_args: list[str]) -> str:
     captured = []
-    print("+", " ".join(["make", "board_bench_test", *make_args]), flush=True)
-    subprocess.run(["make", "board_bench_test", *make_args], cwd=root, check=True, text=True)
+    cmd = ["make", "-C", "picorv32/picosoc", "prog_bram", *picosoc_args]
+    print("+", " ".join(cmd), flush=True)
+    subprocess.run(cmd, cwd=root, check=True, text=True)
     time.sleep(1.0)
 
     ser = None
@@ -146,8 +208,8 @@ def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, make_
     return "".join(captured)
 
 
-def simulate_bench(root: Path, make_args: list[str]) -> str:
-    sim_out = run_capture(["make", "board_bench_sim", *make_args], root)
+def simulate_bench(root: Path, picosoc_args: list[str]) -> str:
+    sim_out = run_capture(["make", "-C", "picorv32/picosoc", "sim", *picosoc_args], root)
     chars = []
     for token in re.findall(r"Serial data:\s+(.*)", sim_out):
         token = token.strip()
@@ -168,31 +230,31 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
         f"M2_APPROX={m2}",
         f"M3_APPROX={m3}",
     ]
+    picosoc_args = [
+        "BOARD_APP=mul16_dhry",
+        *make_args,
+    ]
 
     run_capture(["make", "clean"], root)
     run_capture(["make", "-C", "picorv32/picosoc", "clean"], root)
     (root / "build" / "combined_analysis").mkdir(parents=True, exist_ok=True)
 
-    metrics_out = run_capture([
-        "python3", "group8/scripts/evaluate_mul16.py",
-        "--k", str(k),
-        "--m0", str(m0),
-        "--m1", str(m1),
-        "--m2", str(m2),
-        "--m3", str(m3),
-        "--samples", str(samples),
-    ], root)
+    metrics_out = run_metric_sim(root, k, m0, m1, m2, m3, samples)
 
     run_capture(["make", "synth", *make_args], root)
     log_path = root / "build" / "synth" / f"approx_mul16_loa_k{k}_{m0}_{m1}_{m2}_{m3}.log"
     resource_data = parse_resources(log_path.read_text())
-    pnr_out = run_capture(["make", "-C", "picorv32/scripts/icestorm", "all", "BOARD_APP=mul16_dhry", *make_args], root)
+    pnr_out, pnr_returncode = run_pnr_capture(
+        ["make", "-C", "picorv32/picosoc", "all", *picosoc_args],
+        root,
+        root / "picorv32" / "picosoc" / "build" / "pnr" / "icebreaker.asc",
+    )
 
     bench_mode = "board" if board else "simulation"
     if board:
-        bench_text = capture_board_uart(root, serial_port, baud, timeout_s, make_args)
+        bench_text = capture_board_uart(root, serial_port, baud, timeout_s, picosoc_args)
     else:
-        bench_text = simulate_bench(root, make_args)
+        bench_text = simulate_bench(root, picosoc_args)
 
     row = {
         "config": f"{m0}_{m1}_{m2}_{m3}",
@@ -206,6 +268,8 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
     row.update(parse_metrics(metrics_out))
     row.update(resource_data)
     row.update(parse_pnr(pnr_out))
+    row["pnr_status"] = "pass" if pnr_returncode == 0 else "timing_fail"
+    row["pnr_returncode"] = str(pnr_returncode)
     row.update(parse_bench_lines(bench_text))
 
     print(
@@ -263,8 +327,14 @@ def main() -> None:
     else:
         rows.append(analyze_one(root, args.k, args.m0, args.m1, args.m2, args.m3, args.samples, args.board, args.serial_port, args.baud, args.timeout))
 
+    fieldnames = list(rows[0].keys())
+    for row in rows[1:]:
+        for key in row:
+            if key not in fieldnames:
+                fieldnames.append(key)
+
     with out_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
 

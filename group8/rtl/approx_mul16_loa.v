@@ -2,120 +2,94 @@
 
 module approx_mul16_loa #(
 	parameter integer LOA_K = 4,
-	parameter integer M0_APPROX = 2,
+	parameter integer M0_APPROX = 2, // M0 = highest-order
 	parameter integer M1_APPROX = 2,
 	parameter integer M2_APPROX = 2,
-	parameter integer M3_APPROX = 2
+	parameter integer M3_APPROX = 2  // M3 = lowest-order
 ) (
 	input  [15:0] a,
 	input  [15:0] b,
 	output [31:0] p
 );
-	// 16x16 decomposition:
-	// M0 = A[ 7:0] * B[ 7:0]
-	// M1 = A[ 7:0] * B[15:8]
-	// M2 = A[15:8] * B[ 7:0]
-	// M3 = A[15:8] * B[15:8]
-	//
-	// Accumulation uses the low byte of M0 exactly and applies the LOA only to
-	// the overlapping upper slice [31:8]:
-	//   upper0 = M0[15:8]
-	//   upper1 = M1
-	//   upper2 = M2
-	//   upper3 = (M3 << 8)
-	//   upper_sum = LOA(LOA(upper0, upper1), LOA(upper2, upper3))
-	//   P = {upper_sum, M0[7:0]}
-	//
-	// This mapping preserves the standard 8x8 decomposition while ensuring that
-	// k = 4 or 6 actually approximates overlapping accumulation bits.
 
-	wire [15:0] m0;
-	wire [15:0] m1;
-	wire [15:0] m2;
-	wire [15:0] m3;
+	wire [15:0] m0; // high * high
+	wire [15:0] m1; // high * low
+	wire [15:0] m2; // low  * high
+	wire [15:0] m3; // low  * low
 
-	wire [23:0] upper0;
-	wire [23:0] upper1;
-	wire [23:0] upper2;
-	wire [23:0] upper3;
+    generate
+        if (M0_APPROX == 0) begin : gen_m0_exact
+            e_8x8_multiplier u_m0 (.a(a[15:8]), .b(b[15:8]), .p(m0));
+        end else begin : gen_m0_approx
+            v2_8x8_multiplier #(
+                .APPROX_GROUP_B(M0_APPROX),
+                .APPROX_GROUP_A(M0_APPROX),
+                .APPROX_LOA(LOA_K)
+            ) u_m0 (.a(a[15:8]), .b(b[15:8]), .p(m0));
+        end
 
-	wire [23:0] stage0_sum;
-	wire [23:0] stage1_sum;
-	wire [23:0] stage2_sum;
-	wire        unused_carry0;
-	wire        unused_carry1;
-	wire        unused_carry2;
+        if (M1_APPROX == 0) begin : gen_m1_exact
+            e_8x8_multiplier u_m1 (.a(a[15:8]), .b(b[7:0]), .p(m1));
+        end else begin : gen_m1_approx
+            v2_8x8_multiplier #(
+                .APPROX_GROUP_B(M1_APPROX),
+                .APPROX_GROUP_A(M1_APPROX),
+                .APPROX_LOA(LOA_K)
+            ) u_m1 (.a(a[15:8]), .b(b[7:0]), .p(m1));
+        end
 
-	v2_8x8_multiplier #(
-		.APPROX_GROUP_B(M0_APPROX),
-		.APPROX_GROUP_A(M0_APPROX)
-	) u_m0 (
-		.a(a[7:0]),
-		.b(b[7:0]),
-		.p(m0)
-	);
+        if (M2_APPROX == 0) begin : gen_m2_exact
+            e_8x8_multiplier u_m2 (.a(a[7:0]), .b(b[15:8]), .p(m2));
+        end else begin : gen_m2_approx
+            v2_8x8_multiplier #(
+                .APPROX_GROUP_B(M2_APPROX),
+                .APPROX_GROUP_A(M2_APPROX),
+                .APPROX_LOA(LOA_K)
+            ) u_m2 (.a(a[7:0]), .b(b[15:8]), .p(m2));
+        end
 
-	v2_8x8_multiplier #(
-		.APPROX_GROUP_B(M1_APPROX),
-		.APPROX_GROUP_A(M1_APPROX)
-	) u_m1 (
-		.a(a[7:0]),
-		.b(b[15:8]),
-		.p(m1)
-	);
+        if (M3_APPROX == 0) begin : gen_m3_exact
+            e_8x8_multiplier u_m3 (.a(a[7:0]), .b(b[7:0]), .p(m3));
+        end else begin : gen_m3_approx
+            v2_8x8_multiplier #(
+                .APPROX_GROUP_B(M3_APPROX),
+                .APPROX_GROUP_A(M3_APPROX),
+                .APPROX_LOA(LOA_K)
+            ) u_m3 (.a(a[7:0]), .b(b[7:0]), .p(m3));
+        end
+    endgenerate
 
-	v2_8x8_multiplier #(
-		.APPROX_GROUP_B(M2_APPROX),
-		.APPROX_GROUP_A(M2_APPROX)
-	) u_m2 (
-		.a(a[15:8]),
-		.b(b[7:0]),
-		.p(m2)
-	);
+    // Byte-wise recombination with explicit carry propagation:
+    // p = (m0 << 16) + (m1 << 8) + (m2 << 8) + m3
 
-	v2_8x8_multiplier #(
-		.APPROX_GROUP_B(M3_APPROX),
-		.APPROX_GROUP_A(M3_APPROX)
-	) u_m3 (
-		.a(a[15:8]),
-		.b(b[15:8]),
-		.p(m3)
-	);
+    wire [9:0] byte1_sum;
+    wire [9:0] byte2_sum;
+    wire [8:0] byte3_sum;
 
-	assign upper0 = {16'b0, m0[15:8]};
-	assign upper1 = {8'b0, m1};
-	assign upper2 = {8'b0, m2};
-	assign upper3 = {m3, 8'b0};
+    assign p[7:0] = m3[7:0];
 
-	loa_adder #(
-		.WIDTH(24),
-		.K(LOA_K)
-	) u_add0 (
-		.a(upper0),
-		.b(upper1),
-		.sum(stage0_sum),
-		.carry_out(unused_carry0)
-	);
+    // byte 1: m3 high + low bytes of cross terms
+    assign byte1_sum =
+        {2'b00, m3[15:8]} +
+        {2'b00, m1[7:0]}  +
+        {2'b00, m2[7:0]};
 
-	loa_adder #(
-		.WIDTH(24),
-		.K(LOA_K)
-	) u_add1 (
-		.a(upper2),
-		.b(upper3),
-		.sum(stage1_sum),
-		.carry_out(unused_carry1)
-	);
+    assign p[15:8] = byte1_sum[7:0];
 
-	loa_adder #(
-		.WIDTH(24),
-		.K(LOA_K)
-	) u_add2 (
-		.a(stage0_sum),
-		.b(stage1_sum),
-		.sum(stage2_sum),
-		.carry_out(unused_carry2)
-	);
+    // byte 2: high bytes of cross terms + low byte of high*high + carry from byte 1
+    assign byte2_sum =
+        {2'b00, m1[15:8]} +
+        {2'b00, m2[15:8]} +
+        {2'b00, m0[7:0]}  +
+        {8'b0, byte1_sum[9:8]};
 
-	assign p = {stage2_sum, m0[7:0]};
+    assign p[23:16] = byte2_sum[7:0];
+
+    // byte 3: high byte of high*high + carry from byte 2
+    assign byte3_sum =
+        {1'b0, m0[15:8]} +
+        {7'b0, byte2_sum[9:8]};
+
+    assign p[31:24] = byte3_sum[7:0];
+
 endmodule
