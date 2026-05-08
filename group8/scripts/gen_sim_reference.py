@@ -22,7 +22,7 @@ FIXED_CASES = [
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Python-reference vectors for approx_mul16_loa_tb.")
-    parser.add_argument("--k", type=int, choices=(4, 6), required=True)
+    parser.add_argument("--k", type=int, choices=(0, 4, 6), required=True)
     parser.add_argument("--m0", type=int, required=True)
     parser.add_argument("--m1", type=int, required=True)
     parser.add_argument("--m2", type=int, required=True)

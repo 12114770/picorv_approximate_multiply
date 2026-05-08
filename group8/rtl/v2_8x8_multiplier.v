@@ -21,8 +21,8 @@ module v2_8x8_multiplier #(
             $finish;
         end
 
-        if (APPROX_LOA <= 0 || APPROX_LOA >= 12) begin
-            $display("ERROR: APPROX_LOA must be in range 1..11 for WIDTH=12, got %0d", APPROX_LOA);
+        if (APPROX_LOA < 0 || APPROX_LOA >= 12) begin
+            $display("ERROR: APPROX_LOA must be in range 0..11 for WIDTH=12, got %0d", APPROX_LOA);
             $finish;
         end
     end

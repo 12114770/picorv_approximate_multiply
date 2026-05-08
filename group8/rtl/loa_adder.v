@@ -10,21 +10,31 @@ module loa_adder #(
 	output             carry_out
 );
 	initial begin
-		if (K <= 0 || K >= WIDTH) begin
+		if (K < 0 || K >= WIDTH) begin
 			$display("ERROR: loa_adder requires 0 < K < WIDTH. WIDTH=%0d K=%0d", WIDTH, K);
 			$finish;
 		end
 	end
 
-	wire [K-1:0] lower_sum;
-	wire         lower_carry;
-	wire [WIDTH-K:0] upper_sum_ext;
+	if (K > 0) begin
+		wire [K-1:0] lower_sum;
+		wire         lower_carry;
+		wire [WIDTH-K:0] upper_sum_ext;
 
-	assign lower_sum = a[K-1:0] | b[K-1:0];
-	assign lower_carry = a[K-1] & b[K-1];
-	assign upper_sum_ext = {1'b0, a[WIDTH-1:K]} + {1'b0, b[WIDTH-1:K]} + lower_carry;
+		assign lower_sum = a[K-1:0] | b[K-1:0];
+		assign lower_carry = a[K-1] & b[K-1];
+		assign upper_sum_ext = {1'b0, a[WIDTH-1:K]} + {1'b0, b[WIDTH-1:K]} + lower_carry;
 
-	assign sum[K-1:0] = lower_sum;
-	assign sum[WIDTH-1:K] = upper_sum_ext[WIDTH-K-1:0];
-	assign carry_out = upper_sum_ext[WIDTH-K];
+		assign sum[K-1:0] = lower_sum;
+		assign sum[WIDTH-1:K] = upper_sum_ext[WIDTH-K-1:0];
+		assign carry_out = upper_sum_ext[WIDTH-K];
+	end else begin
+		
+		wire [WIDTH:0] exact_sum;
+
+		assign exact_sum = {1'b0, a} + {1'b0, b};
+
+		assign sum = exact_sum[WIDTH-1:0];
+		assign carry_out = exact_sum[WIDTH];
+	end
 endmodule

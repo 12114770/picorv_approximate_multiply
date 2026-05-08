@@ -19,7 +19,9 @@ module approx_mul16_loa #(
 
     generate
         if (M0_APPROX == 0) begin : gen_m0_exact
-            e_8x8_multiplier u_m0 (.a(a[15:8]), .b(b[15:8]), .p(m0));
+            e_8x8_multiplier #(
+                .APPROX_LOA(LOA_K)
+            ) u_m0 (.a(a[15:8]), .b(b[15:8]), .p(m0));
         end else begin : gen_m0_approx
             v2_8x8_multiplier #(
                 .APPROX_GROUP_B(M0_APPROX),
@@ -29,7 +31,9 @@ module approx_mul16_loa #(
         end
 
         if (M1_APPROX == 0) begin : gen_m1_exact
-            e_8x8_multiplier u_m1 (.a(a[15:8]), .b(b[7:0]), .p(m1));
+            e_8x8_multiplier #(
+                .APPROX_LOA(LOA_K)
+            ) u_m1 (.a(a[15:8]), .b(b[7:0]), .p(m1));
         end else begin : gen_m1_approx
             v2_8x8_multiplier #(
                 .APPROX_GROUP_B(M1_APPROX),
@@ -39,7 +43,9 @@ module approx_mul16_loa #(
         end
 
         if (M2_APPROX == 0) begin : gen_m2_exact
-            e_8x8_multiplier u_m2 (.a(a[7:0]), .b(b[15:8]), .p(m2));
+            e_8x8_multiplier #(
+                .APPROX_LOA(LOA_K)
+            ) u_m2 (.a(a[7:0]), .b(b[15:8]), .p(m2));
         end else begin : gen_m2_approx
             v2_8x8_multiplier #(
                 .APPROX_GROUP_B(M2_APPROX),
@@ -49,7 +55,9 @@ module approx_mul16_loa #(
         end
 
         if (M3_APPROX == 0) begin : gen_m3_exact
-            e_8x8_multiplier u_m3 (.a(a[7:0]), .b(b[7:0]), .p(m3));
+            e_8x8_multiplier  #(
+                .APPROX_LOA(LOA_K)
+            ) u_m3 (.a(a[7:0]), .b(b[7:0]), .p(m3));
         end else begin : gen_m3_approx
             v2_8x8_multiplier #(
                 .APPROX_GROUP_B(M3_APPROX),
@@ -59,37 +67,13 @@ module approx_mul16_loa #(
         end
     endgenerate
 
-    // Byte-wise recombination with explicit carry propagation:
-    // p = (m0 << 16) + (m1 << 8) + (m2 << 8) + m3
+    // Byte-wise recombination without any carry propagation:
+    // P = {m0[15:8], m1[15:8] + m2[15:8] + m0[7:0],
+    //      m3[15:8] + m2[7:0] + m1[7:0], m3[7:0]}
 
-    wire [9:0] byte1_sum;
-    wire [9:0] byte2_sum;
-    wire [8:0] byte3_sum;
-
-    assign p[7:0] = m3[7:0];
-
-    // byte 1: m3 high + low bytes of cross terms
-    assign byte1_sum =
-        {2'b00, m3[15:8]} +
-        {2'b00, m1[7:0]}  +
-        {2'b00, m2[7:0]};
-
-    assign p[15:8] = byte1_sum[7:0];
-
-    // byte 2: high bytes of cross terms + low byte of high*high + carry from byte 1
-    assign byte2_sum =
-        {2'b00, m1[15:8]} +
-        {2'b00, m2[15:8]} +
-        {2'b00, m0[7:0]}  +
-        {8'b0, byte1_sum[9:8]};
-
-    assign p[23:16] = byte2_sum[7:0];
-
-    // byte 3: high byte of high*high + carry from byte 2
-    assign byte3_sum =
-        {1'b0, m0[15:8]} +
-        {7'b0, byte2_sum[9:8]};
-
-    assign p[31:24] = byte3_sum[7:0];
+    assign p[31:24] = m0[15:8];
+    assign p[23:16] = m1[15:8] + m2[15:8] + m0[7:0];
+    assign p[15:8]  = m3[15:8] + m2[7:0] + m1[7:0];
+    assign p[7:0]   = m3[7:0];
 
 endmodule

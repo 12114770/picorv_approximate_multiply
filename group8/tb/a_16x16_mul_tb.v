@@ -2,6 +2,24 @@
 
 module approx_mul16_loa_tb;
 
+    //Models CLAs for 16x16 multiplication.
+    function [31:0] cla_model;
+        input [15:0] a;
+        input [15:0] b;
+        reg [15:0] m0, m1, m2, m3;
+        begin
+            m0 = a[15:8] * b[15:8]; 
+            m1 = a[7:0] * b[15:8];
+            m2 = a[15:8] * b[7:0];
+            m3 = a[7:0] * b[7:0];
+
+            cla_model[31:24] = m0[15:8];
+            cla_model[23:16] = m1[15:8] + m2[15:8] + m0[7:0];
+            cla_model[15:8]  = m3[15:8] + m2[7:0] + m1[7:0];
+            cla_model[7:0]   = m3[7:0];
+        end
+    endfunction
+
     parameter integer LOA_K = 4;
 	parameter integer M0_APPROX = 2;
 	parameter integer M1_APPROX = 2;
@@ -18,6 +36,7 @@ module approx_mul16_loa_tb;
     integer x_errors;
 
     reg [31:0] exact;
+    reg [31:0] model_expect;
     reg [31:0] abs_err;
     reg [31:0] max_abs_err;
     reg [63:0] total_abs_err;
@@ -50,6 +69,7 @@ module approx_mul16_loa_tb;
             #1;
 
             exact = ta * tb;
+            model_expect = cla_model(a,b);
 
             if (^p === 1'bx) begin
                 $display("X/Z ERROR: a=0x%04h b=0x%04h p=%b", ta, tb, p);
@@ -74,11 +94,12 @@ module approx_mul16_loa_tb;
             if ((M0_APPROX == 0) &&
                 (M1_APPROX == 0) &&
                 (M2_APPROX == 0) &&
-                (M3_APPROX == 0)) begin
+                (M3_APPROX == 0) &&
+                (LOA_K == 0)) begin
 
-                if (p !== exact) begin
-                    $display("FAIL exact: a=0x%04h b=0x%04h got=0x%08h expected=0x%08h",
-                             ta, tb, p, exact);
+                if (p !== model_expect) begin
+                    $display("FAIL expected: a=0x%04h b=0x%04h got=0x%08h expected=0x%08h",
+                             ta, tb, p, model_expect);
                     errors = errors + 1;
                 end
             end

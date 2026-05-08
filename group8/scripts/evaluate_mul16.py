@@ -109,11 +109,14 @@ def mul8x4(a: int, b: int, approx: int) -> int:
 
 
 def loa_add(x: int, y: int, k: int, width: int) -> int:
-    lower_mask = (1 << k) - 1
-    lower = (x | y) & lower_mask
-    carry = ((x >> (k - 1)) & 1) & ((y >> (k - 1)) & 1)
-    upper = (x >> k) + (y >> k) + carry
-    return ((upper << k) | lower) & ((1 << width) - 1)
+    if(k != 0):
+        lower_mask = (1 << k) - 1
+        lower = (x | y) & lower_mask
+        carry = ((x >> (k - 1)) & 1) & ((y >> (k - 1)) & 1)
+        upper = (x >> k) + (y >> k) + carry
+        return ((upper << k) | lower) & ((1 << width) - 1)
+    else:
+        return x + y & ((1 << width) - 1)
 
 
 def v2_mul8(a: int, b: int, approx_group_a: int, approx_group_b: int, loa_k: int) -> int:
@@ -138,8 +141,14 @@ def approx_mul16(a: int, b: int, k: int, configs: tuple[int, int, int, int]) -> 
     m1 = mul8((a >> 8) & 0xFF, b & 0xFF, configs[1], k)
     m2 = mul8(a & 0xFF, (b >> 8) & 0xFF, configs[2], k)
     m3 = mul8(a & 0xFF, b & 0xFF, configs[3], k)
+    #Return bytes from highest to lowest
+    b3 = (m0 & 0xFF00) >> 8
+    b2 = (((m1 & 0xFF00) >> 8) + ((m2 & 0xFF00) >> 8) + (m0 & 0x00FF)) & 0xFF
+    b1 = (((m3 & 0xFF00) >> 8) + (m2 & 0x00FF) + (m1 & 0x00FF)) & 0xFF
+    b0 = (m3 & 0x00FF)
+    return (b3 << 24) + (b2 << 16) + (b1 << 8) + b0
 
-    return ((m0 << 16) + (m1 << 8) + (m2 << 8) + m3) & 0xFFFFFFFF
+    #return ((m0 << 16) + (m1 << 8) + (m2 << 8) + m3) & 0xFFFFFFFF
 
 
 def run_simulation_metrics(args: argparse.Namespace) -> None:
