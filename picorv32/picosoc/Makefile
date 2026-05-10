@@ -57,7 +57,7 @@ disdump: $(FIRMWARE_BUILD_DIR)/icebreaker_fw.elf
 
 # ---- iCE40 IceBreaker Board ----
 
-all: pnr
+all: $(BITSTREAM_BUILD_DIR)/icebreaker_bram.bin
 
 sim: $(SIM_BUILD_DIR)/icebreaker_tb.vpp $(FIRMWARE_BUILD_DIR)/icebreaker_fw.hex $(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.hex
 	vvp -N $< +firmware=$(FIRMWARE_BUILD_DIR)/icebreaker_fw_bram.hex
