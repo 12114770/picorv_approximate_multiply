@@ -6,9 +6,11 @@ module e_8x8_multiplier #(
     output [15:0] p
 );
 
-    if (APPROX_LOA < 0 || APPROX_LOA >= 12) begin
-        $display("ERROR: APPROX_LOA must be in range 0..11 for WIDTH=12, got %0d", APPROX_LOA);
-        $finish;
+    initial begin
+        if (APPROX_LOA < 0 || APPROX_LOA >= 12) begin
+            $display("ERROR: APPROX_LOA must be in range 0..11 for WIDTH=12, got %0d", APPROX_LOA);
+            $finish;
+        end
     end
 
     wire [11:0] group_a_out;
