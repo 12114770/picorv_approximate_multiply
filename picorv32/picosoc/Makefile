@@ -6,6 +6,7 @@ M1_APPROX ?= 2
 M2_APPROX ?= 2
 M3_APPROX ?= 2
 BOARD_APP ?= demo
+PNR_FREQ_MHZ ?= 13
 
 ifeq ($(BOARD_APP),mul16_dhry)
 FIRMWARE_C = ../../dhrystone_clone/firmware_dhrystone_mul16.c
@@ -145,11 +146,11 @@ $(PNR_BUILD_DIR)/icebreaker.asc: icebreaker.pcf $(SYNTH_BUILD_DIR)/icebreaker.js
 
 # ---- Bitstreams ----
 $(BITSTREAM_BUILD_DIR)/icebreaker_flash.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(BITSTREAM_BUILD_DIR)
-	icetime -d up5k -c 11 -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
+	-icetime -d up5k -c $(PNR_FREQ_MHZ) -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
 	icepack $< $@
 
 $(BITSTREAM_BUILD_DIR)/icebreaker_bram.bin: $(PNR_BUILD_DIR)/icebreaker.asc | $(BITSTREAM_BUILD_DIR)
-	icetime -d up5k -c 11 -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
+	-icetime -d up5k -c $(PNR_FREQ_MHZ) -mtr $(BITSTREAM_BUILD_DIR)/icebreaker.rpt $<
 	icepack $< $@
 
 # ---- Simulation ----
