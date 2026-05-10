@@ -140,8 +140,11 @@ def parse_resources(log_text: str) -> dict[str, str]:
 
 
 def parse_pnr(output: str) -> dict[str, str]:
+    icetime_status = _match(output, r"Checking\s+[0-9.]+ ns\s*\(13\.00 MHz\) clock constraint:\s*([A-Z]+)")
     return {
-        "max_freq_mhz": _match(output, r"Max frequency.*?:\s*([0-9.]+) MHz"),
+        "nextpnr_fmax_mhz": _match(output, r"Max frequency.*?:\s*([0-9.]+) MHz"),
+        "icetime_fmax_mhz": _match(output, r"Timing estimate:\s*[0-9.]+ ns\s*\(([0-9.]+) MHz\)"),
+        "icetime_13mhz": icetime_status.lower() if icetime_status else "",
         "ice_lc_used": _match(output, r"ICESTORM_LC:\s*(\d+)/"),
         "ice_lc_total": _match(output, r"ICESTORM_LC:\s*\d+/\s*(\d+)"),
         "ice_ram_used": _match(output, r"ICESTORM_RAM:\s*(\d+)/"),
@@ -268,7 +271,9 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
     row.update(parse_metrics(metrics_out))
     row.update(resource_data)
     row.update(parse_pnr(pnr_out))
-    row["pnr_status"] = "pass" if pnr_returncode == 0 else "timing_fail"
+    row["pnr_status"] = "timing_fail" if row.get("icetime_13mhz") == "failed" else "pass"
+    if pnr_returncode != 0:
+        row["pnr_status"] = "pnr_fail"
     row["pnr_returncode"] = str(pnr_returncode)
     row.update(parse_bench_lines(bench_text))
 
@@ -277,7 +282,9 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
         f" NMED={row.get('nmed', '')}"
         f" MRED={row.get('mred', '')}"
         f" cells={row.get('total_cells', '')}"
-        f" fmax={row.get('max_freq_mhz', '')}MHz"
+        f" nextpnr_fmax={row.get('nextpnr_fmax_mhz', '')}MHz"
+        f" icetime_fmax={row.get('icetime_fmax_mhz', '')}MHz"
+        f" icetime_13mhz={row.get('icetime_13mhz', '')}"
         f" dmips/mhz={row.get('dmips_per_mhz', '')}"
         f" mul16_cycles={row.get('mul16_cycles', '')}"
         f" checksum={row.get('mul16_checksum', '')}"
