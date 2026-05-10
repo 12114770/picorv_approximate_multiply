@@ -1,5 +1,5 @@
 # Select your RISC-V compiler here (riscv32i/riscv32im/riscv32ic/riscv32imc)
-RISCV_ISA = ic
+RISCV_ISA = i
 LOA_K ?= 4
 M0_APPROX ?= 2
 M1_APPROX ?= 2

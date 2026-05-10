@@ -79,6 +79,7 @@ module picosoc (
 	parameter [0:0] ENABLE_MUL = 0;
 	parameter [0:0] ENABLE_DIV = 0;
 	parameter [0:0] ENABLE_FAST_MUL = 0;
+	parameter [0:0] ENABLE_FLASH = 1;
 	parameter [0:0] ENABLE_COUNTERS = 1;
 	parameter [0:0] ENABLE_IRQ_QREGS = 0;
 	parameter integer MUL16_LOA_K = 4;
@@ -206,36 +207,54 @@ module picosoc (
 		.pcpi_ready(pcpi_ready)
 	);
 
-	spimemio spimemio (
-		.clk    (clk),
-		.resetn (resetn),
-		.valid  (mem_valid && mem_addr >= 4*MEM_WORDS && mem_addr < 32'h 0200_0000),
-		.ready  (spimem_ready),
-		.addr   (mem_addr[23:0]),
-		.rdata  (spimem_rdata),
+	generate
+		if (ENABLE_FLASH) begin : gen_spimemio
+			spimemio spimemio (
+				.clk    (clk),
+				.resetn (resetn),
+				.valid  (mem_valid && mem_addr >= 4*MEM_WORDS && mem_addr < 32'h 0200_0000),
+				.ready  (spimem_ready),
+				.addr   (mem_addr[23:0]),
+				.rdata  (spimem_rdata),
 
-		.flash_csb    (flash_csb   ),
-		.flash_clk    (flash_clk   ),
+				.flash_csb    (flash_csb   ),
+				.flash_clk    (flash_clk   ),
 
-		.flash_io0_oe (flash_io0_oe),
-		.flash_io1_oe (flash_io1_oe),
-		.flash_io2_oe (flash_io2_oe),
-		.flash_io3_oe (flash_io3_oe),
+				.flash_io0_oe (flash_io0_oe),
+				.flash_io1_oe (flash_io1_oe),
+				.flash_io2_oe (flash_io2_oe),
+				.flash_io3_oe (flash_io3_oe),
 
-		.flash_io0_do (flash_io0_do),
-		.flash_io1_do (flash_io1_do),
-		.flash_io2_do (flash_io2_do),
-		.flash_io3_do (flash_io3_do),
+				.flash_io0_do (flash_io0_do),
+				.flash_io1_do (flash_io1_do),
+				.flash_io2_do (flash_io2_do),
+				.flash_io3_do (flash_io3_do),
 
-		.flash_io0_di (flash_io0_di),
-		.flash_io1_di (flash_io1_di),
-		.flash_io2_di (flash_io2_di),
-		.flash_io3_di (flash_io3_di),
+				.flash_io0_di (flash_io0_di),
+				.flash_io1_di (flash_io1_di),
+				.flash_io2_di (flash_io2_di),
+				.flash_io3_di (flash_io3_di),
 
-		.cfgreg_we(spimemio_cfgreg_sel ? mem_wstrb : 4'b 0000),
-		.cfgreg_di(mem_wdata),
-		.cfgreg_do(spimemio_cfgreg_do)
-	);
+				.cfgreg_we(spimemio_cfgreg_sel ? mem_wstrb : 4'b 0000),
+				.cfgreg_di(mem_wdata),
+				.cfgreg_do(spimemio_cfgreg_do)
+			);
+		end else begin : gen_no_spimemio
+			assign spimem_ready = 1'b0;
+			assign spimem_rdata = 32'b0;
+			assign spimemio_cfgreg_do = 32'b0;
+			assign flash_csb = 1'b1;
+			assign flash_clk = 1'b0;
+			assign flash_io0_oe = 1'b0;
+			assign flash_io1_oe = 1'b0;
+			assign flash_io2_oe = 1'b0;
+			assign flash_io3_oe = 1'b0;
+			assign flash_io0_do = 1'b0;
+			assign flash_io1_do = 1'b0;
+			assign flash_io2_do = 1'b0;
+			assign flash_io3_do = 1'b0;
+		end
+	endgenerate
 
 	simpleuart simpleuart (
 		.clk         (clk         ),

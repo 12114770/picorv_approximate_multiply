@@ -52,6 +52,7 @@ module icebreaker (
 	parameter integer MUL16_M1_APPROX = 2;
 	parameter integer MUL16_M2_APPROX = 2;
 	parameter integer MUL16_M3_APPROX = 2;
+	parameter [0:0] ENABLE_FLASH = 0;
 
 	reg [5:0] reset_cnt = 0;
 	wire resetn = &reset_cnt;
@@ -116,12 +117,13 @@ module icebreaker (
 		.ENABLE_REGS_DUALPORT(1),
 		.TWO_STAGE_SHIFT(1),
 		.BARREL_SHIFTER(0),
-		.TWO_CYCLE_COMPARE(0),
-		.TWO_CYCLE_ALU(0),
-		.ENABLE_COMPRESSED(1),
+		.TWO_CYCLE_COMPARE(1),
+		.TWO_CYCLE_ALU(1),
+		.ENABLE_COMPRESSED(0),
 		.ENABLE_MUL(0),
 		.ENABLE_FAST_MUL(0),
 		.ENABLE_DIV(0),
+		.ENABLE_FLASH(ENABLE_FLASH),
 		.MUL16_LOA_K(MUL16_LOA_K),
 		.MUL16_M0_APPROX(MUL16_M0_APPROX),
 		.MUL16_M1_APPROX(MUL16_M1_APPROX),
