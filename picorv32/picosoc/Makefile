@@ -1,5 +1,5 @@
 # Select your RISC-V compiler here (riscv32i/riscv32im/riscv32ic/riscv32imc)
-RISCV_ISA = ic
+RISCV_ISA = imc
 LOA_K ?= 4
 M0_APPROX ?= 2
 M1_APPROX ?= 2
@@ -7,13 +7,21 @@ M2_APPROX ?= 2
 M3_APPROX ?= 2
 BOARD_APP ?= demo
 PNR_FREQ_MHZ ?= 13
+USE_EXACT_MUL ?= 0
 
-ifeq ($(BOARD_APP),mul16_dhry)
-FIRMWARE_C = ../../dhrystone_clone/firmware_dhrystone_mul16.c
-FIRMWARE_EXTRA_SRCS = ../../dhrystone_clone/mul16_bench.c
+ifeq ($(BOARD_APP),bench)
+FIRMWARE_C = ../../group8/sw/mul16_bench.c
+FIRMWARE_EXTRA_SRCS =
+else ifeq ($(BOARD_APP),demo)
+FIRMWARE_C = ../../group8/sw/mul16_demo.c
+FIRMWARE_EXTRA_SRCS =
 else
 FIRMWARE_C = firmware.c
 FIRMWARE_EXTRA_SRCS =
+endif
+
+ifeq ($(USE_EXACT_MUL),1)
+CFLAGS_EXTRA += -DUSE_EXACT_MUL
 endif
 
 GROUP8_RTL_DIR = ../../group8/rtl
@@ -39,7 +47,7 @@ PNR_BUILD_DIR = $(BUILD_DIR)/pnr
 BITSTREAM_BUILD_DIR = $(BUILD_DIR)/bitstream
 
 CROSS ?= riscv-none-elf-
-CFLAGS= -O3 -march=rv32$(RISCV_ISA)
+CFLAGS= -O3 -march=rv32$(RISCV_ISA) $(CFLAGS_EXTRA)
 
 DHRY_SRCS = dhrystone/dhry.h dhrystone/stdlib.c dhrystone/dhry_2.c dhrystone/dhry_1.c
 BRAM_SIZE = 3072

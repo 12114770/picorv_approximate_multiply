@@ -78,6 +78,7 @@ module picosoc (
 	parameter [0:0] ENABLE_COMPRESSED = 1;
 	parameter [0:0] ENABLE_MUL = 0;
 	parameter [0:0] ENABLE_DIV = 0;
+	parameter [0:0] ENABLE_PCPI = 0;
 	parameter [0:0] ENABLE_FAST_MUL = 0;
 	parameter [0:0] ENABLE_COUNTERS = 1;
 	parameter [0:0] ENABLE_IRQ_QREGS = 0;
@@ -160,7 +161,7 @@ module picosoc (
 		.TWO_CYCLE_ALU(TWO_CYCLE_ALU),
 		.COMPRESSED_ISA(ENABLE_COMPRESSED),
 		.ENABLE_COUNTERS(ENABLE_COUNTERS),
-		.ENABLE_PCPI(1),
+		.ENABLE_PCPI(ENABLE_PCPI),
 		.ENABLE_MUL(ENABLE_MUL),
 		.ENABLE_DIV(ENABLE_DIV),
 		.ENABLE_FAST_MUL(ENABLE_FAST_MUL),

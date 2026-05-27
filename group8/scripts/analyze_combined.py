@@ -6,8 +6,6 @@ import subprocess
 import time
 from pathlib import Path
 
-import serial
-from serial import SerialException
 
 
 CONFIGS = [
@@ -153,16 +151,9 @@ def parse_pnr(output: str) -> dict[str, str]:
 
 
 def parse_bench_lines(text: str) -> dict[str, str]:
-    dps = _match(text, r"Dhrystones/Second_MHz:\s*([0-9]+)")
-    dmips = _match(text, r"DMIPS/MHz:\s*([0-9.]+)")
-    if not dmips:
-        dmips = _match(text, r"dmips_per_mhz=([0-9.]+)")
     return {
-        "dhrystones_per_second_mhz": dps,
-        "dmips_per_mhz": dmips,
-        "mul16_iters": _match(text, r"mul16 iters:\s*([0-9]+)"),
-        "mul16_cycles": _match(text, r"mul16 cycles:\s*([0-9]+)") or _match(text, r"mul16_cycles=([0-9]+)"),
-        "mul16_checksum": _match(text, r"mul16 checksum:\s*(0x[0-9a-fA-F]+)") or _match(text, r"checksum=(0x[0-9a-fA-F]+)"),
+        "mul16_cycles": _match(text, r"cycles=0x([0-9a-fA-F]+)"),
+        "mul16_checksum": _match(text, r"checksum=(0x[0-9a-fA-F]+)"),
         "bench_done": "1" if "BENCH_DONE" in text else "0",
     }
 
@@ -173,42 +164,31 @@ def _match(text: str, pattern: str) -> str:
 
 
 def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, picosoc_args: list[str]) -> str:
-    captured = []
-    cmd = ["make", "-C", "picorv32/picosoc", "prog_bram", *picosoc_args]
-    print("+", " ".join(cmd), flush=True)
-    subprocess.run(cmd, cwd=root, check=True, text=True)
-    time.sleep(1.0)
+    cmd_prog = ["make", "-C", "picorv32/picosoc", "prog_bram", *picosoc_args]
+    capture_path = root / "build" / "combined_analysis" / "uart_capture.txt"
+    capture_path.parent.mkdir(parents=True, exist_ok=True)
 
-    ser = None
-    deadline = time.time() + timeout_s
+    cap = capture_path.open("wb")
+    miniterm = subprocess.Popen(
+        ["python3", "-u", "-m", "serial.tools.miniterm", "--raw", port, str(baud)],
+        stdout=cap,
+        stderr=subprocess.DEVNULL,
+    )
 
-    while time.time() < deadline:
-        if ser is None:
-            try:
-                ser = serial.Serial(port, baudrate=baud, timeout=0.1)
-                ser.reset_input_buffer()
-            except SerialException:
-                time.sleep(0.2)
-                continue
+    print("+", " ".join(cmd_prog), flush=True)
+    subprocess.run(cmd_prog, cwd=root, check=True, text=True)
 
-        try:
-            data = ser.read(4096)
-            if data:
-                captured.append(data.decode(errors="ignore"))
-                if "BENCH_DONE" in "".join(captured):
-                    break
-        except SerialException:
-            try:
-                ser.close()
-            except Exception:
-                pass
-            ser = None
-            time.sleep(0.2)
-            continue
+    time.sleep(2)
 
-    if ser is not None:
-        ser.close()
-    return "".join(captured)
+    miniterm.terminate()
+    miniterm.wait()
+    cap.close()
+
+    bench_text = capture_path.read_text(errors="replace")
+    print(bench_text, end="", flush=True)
+    if "BENCH_DONE" not in bench_text:
+        print("WARNING: BENCH_DONE not seen in UART output.", flush=True)
+    return bench_text
 
 
 def simulate_bench(root: Path, picosoc_args: list[str]) -> str:
@@ -234,7 +214,7 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
         f"M3_APPROX={m3}",
     ]
     picosoc_args = [
-        "BOARD_APP=mul16_dhry",
+        "BOARD_APP=bench",
         *make_args,
     ]
 
@@ -256,6 +236,10 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
     bench_mode = "board" if board else "simulation"
     if board:
         bench_text = capture_board_uart(root, serial_port, baud, timeout_s, picosoc_args)
+        print(" START UART OUTPUT HERE")
+        print(bench_text)
+        print(" END UART OUTPUT HERE")
+    
     else:
         bench_text = simulate_bench(root, picosoc_args)
 
@@ -285,7 +269,6 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
         f" nextpnr_fmax={row.get('nextpnr_fmax_mhz', '')}MHz"
         f" icetime_fmax={row.get('icetime_fmax_mhz', '')}MHz"
         f" icetime_13mhz={row.get('icetime_13mhz', '')}"
-        f" dmips/mhz={row.get('dmips_per_mhz', '')}"
         f" mul16_cycles={row.get('mul16_cycles', '')}"
         f" checksum={row.get('mul16_checksum', '')}"
         f" bench_done={row.get('bench_done', '')}",

@@ -36,8 +36,6 @@ M3_APPROX ?= 2
 CFG_TAG ?= $(M0_APPROX)_$(M1_APPROX)_$(M2_APPROX)_$(M3_APPROX)
 SIM_OUT ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K)_m$(M0_APPROX)_$(M1_APPROX)_$(M2_APPROX)_$(M3_APPROX).vvp
 VCD ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K).vcd
-SIM_REF ?= $(SIM_DIR)/$(TBTOP)_k$(LOA_K)_$(CFG_TAG)_ref.txt
-SIM_RANDOM_SAMPLES ?= 50
 SYNTH_OUT ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG)_netlist.v
 SYNTH_LOG ?= $(SYNTH_DIR)/$(TOP)_k$(LOA_K)_$(CFG_TAG).log
 METRIC_SAMPLES ?= 10000
@@ -84,14 +82,11 @@ help:
 	  '  make combined LOA_K=4 M0_APPROX=2 M1_APPROX=2 M2_APPROX=2 M3_APPROX=2' \
 	  '  make sim TESTBENCH=mul_tb.v DESIGN="add.v mul.v" VCD=mul.vcd'
 
-sim: $(SIM_OUT) $(SIM_REF)
-	$(VVP) $(SIM_OUT) +vcd=$(VCD) +ref=$(SIM_REF)
+sim: $(SIM_OUT)
+	$(VVP) $(SIM_OUT) +vcd=$(VCD)
 
 $(SIM_OUT): $(DESIGN) $(TESTBENCH) | $(SIM_DIR)
 	$(IVERILOG) -g2012 -o $@ -s $(TBTOP) -P $(TBTOP).LOA_K=$(LOA_K) -P $(TBTOP).M0_APPROX=$(M0_APPROX) -P $(TBTOP).M1_APPROX=$(M1_APPROX) -P $(TBTOP).M2_APPROX=$(M2_APPROX) -P $(TBTOP).M3_APPROX=$(M3_APPROX) $(DESIGN) $(TESTBENCH)
-
-$(SIM_REF): group8/scripts/gen_sim_reference.py group8/scripts/evaluate_mul16.py | $(SIM_DIR)
-	$(PYTHON) group8/scripts/gen_sim_reference.py --k $(LOA_K) --m0 $(M0_APPROX) --m1 $(M1_APPROX) --m2 $(M2_APPROX) --m3 $(M3_APPROX) --random-samples $(SIM_RANDOM_SAMPLES) --output $@
 
 synth: | $(SYNTH_DIR)
 	$(YOSYS) -q -l $(SYNTH_LOG) -p 'read_verilog $(DESIGN); chparam -set LOA_K $(LOA_K) -set M0_APPROX $(M0_APPROX) -set M1_APPROX $(M1_APPROX) -set M2_APPROX $(M2_APPROX) -set M3_APPROX $(M3_APPROX) $(TOP); hierarchy -top $(TOP); proc; opt; techmap; opt; stat; write_verilog -noattr $(SYNTH_OUT)'
@@ -101,7 +96,7 @@ sim_sweep:
 	$(PYTHON) group8/scripts/sim_sweep.py
 
 synth_sweep:
-	$(PYTHON) group8/scripts/analyze_resources.py --all
+	$(PYTHON) group8/scripts/synth_sweep.py --all
 
 combined:
 	$(PYTHON) group8/scripts/analyze_combined.py --board --serial-port $(SERIAL_PORT) --samples $(METRIC_SAMPLES) $(COMBINED_ARGS)
