@@ -110,6 +110,9 @@ $(SYNTH_DIR): $(BUILD_DIR)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+pareto:
+	$(PYTHON) group8/scripts/pareto_front.py
+
 clean:
 	rm -rf $(BUILD_DIR)
 
