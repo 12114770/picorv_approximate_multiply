@@ -152,7 +152,7 @@ def parse_pnr(output: str) -> dict[str, str]:
 
 def parse_bench_lines(text: str) -> dict[str, str]:
     return {
-        "mul16_cycles": _match(text, r"cycles=0x([0-9a-fA-F]+)"),
+        "mul16_cycles": _match(text, r"cycles=([0-9]+)"),
         "mul16_checksum": _match(text, r"checksum=(0x[0-9a-fA-F]+)"),
         "bench_done": "1" if "BENCH_DONE" in text else "0",
     }

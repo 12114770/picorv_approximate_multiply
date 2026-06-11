@@ -22,6 +22,21 @@ static void print_hex32(uint32_t v)
 		putchar("0123456789abcdef"[(v >> (4 * i)) & 15]);
 }
 
+static void print_dec(uint32_t v)
+{
+	static const uint32_t pow10[] = {
+		1000000000, 100000000, 10000000, 1000000,
+		100000, 10000, 1000, 100, 10, 1
+	};
+	if (v == 0) { putchar('0'); return; }
+	int leading = 1;
+	for (int i = 0; i < 10; i++) {
+		int digit = 0;
+		while (v >= pow10[i]) { v -= pow10[i]; digit++; }
+		if (digit || !leading) { putchar('0' + digit); leading = 0; }
+	}
+}
+
 static uint32_t xorshift32(uint32_t *state)
 {
 	uint32_t x = *state;
@@ -64,13 +79,15 @@ void main(void)
 		uint32_t result = mul16(a, b);
 #endif
 		checksum ^= result + ((uint32_t)i << 16);
+#ifdef DEBUG
+		print_dec(a); print(" * "); print_dec(b); print(" = "); print_dec(result); print("\n");
+#endif
 	}
 	t1 = rdcycle();
 
-	print("iters=0x0064 cycles=0x");
-	print_hex32(t1 - t0);
-	print(" checksum=0x");
-	print_hex32(checksum);
+	print("iters="); print_dec(100);
+	print(" cycles="); print_dec(t1 - t0);
+	print(" checksum=0x"); print_hex32(checksum);
 	print("\n");
 	reg_leds = checksum;
 	print("BENCH_DONE\n");

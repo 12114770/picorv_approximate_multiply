@@ -24,6 +24,11 @@ ifeq ($(USE_EXACT_MUL),1)
 CFLAGS_EXTRA += -DUSE_EXACT_MUL
 endif
 
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+CFLAGS_EXTRA += -DDEBUG
+endif
+
 GROUP8_RTL_DIR = ../../group8/rtl
 GROUP8_RTL = $(GROUP8_RTL_DIR)/loa_adder.v \
 			 $(GROUP8_RTL_DIR)/ppu_block.v \
