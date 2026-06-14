@@ -1,33 +1,47 @@
-# Approximate 16×16 Multiplier — Group 8
+# Group8's Approximate 16×16 Multiplier
+
+Copyright (C) Group8 - Paul Engelbrechtsmüller, Lukas Sichert, Moritz Schoisswohl
 
 TU Wien Digital Integrated Circuits Lab, Summer Term 2026.
-Task 2: approximate unsigned 16-bit multiplier as a PicoRV32 PCPI coprocessor on the iCEBreaker FPGA (Lattice iCE40 UP5K).
+Approximate unsigned 16-bit multiplier as a PicoRV32 PCPI coprocessor on the iCEBreaker FPGA (Lattice iCE40 UP5K).
 
 **Approximation scheme:** V2-blocks with Lower-part OR Adder (LOA), $k \in \{4, 6\}$.  
-**Best configuration:** `E_55_55_55` k=4 — NMED 0.002723, 4 359 LCs, 16.47 MHz.
+**Used configuration:** `E_55_55_55` k=4 — NMED 0.002723, 4 359 LCs, 16.47 MHz.
 
+### Contents
+
+1. [Introduction](README.md#introduction)
+2. [Quick Start](README.md#quick-start)
+    - [Requirements](#requirements)
+    - [Example Commands](#example-commands)
+3. [Repository Contents](README.md#repository-layout)
+    - [Root Makefile Targets](README.md#root-makefile-targets)
+        - [Key Variables](#key-variables)
+    - [RTL Structure](#rtl-structure-group8rtl)
+    - [Automation Scripts](#automation-scripts-group8scripts)
+    - [Software](#software-group8sw)
+4. [SoC Build](#soc-build-picorv32picosoc)
+    - [PCPI Custom Instruction](#pcpi-custom-instruction)
 ---
 
-## Repository Layout
+## Introduction
 
-```
-group8/
-  rtl/          Verilog RTL (12 active files)
-  tb/           Testbenches
-  sw/           Firmware headers and benchmark
-  scripts/      Automation scripts
-picorv32/
-  picosoc/      SoC build for iCEBreaker
-results/        Saved sweep results and Pareto analysis
-build/          Generated artefacts (git-ignored)
-Makefile        Root automation
-```
+Group8's Approximate 16x16 Mutliplier is an unsigned 16-bit mutliplier, that is integrated into the PicoRV32 soft-core 
+processor as a custom PCPI (Pico Co-Processor Interface) instruction.
 
 ---
-
 ## Quick Start
 
+### Requirements
+
+To run all of the demos given in this repository the [OSS Cad Suite](https://github.com/YosysHQ/oss-cad-suite-build) is a hard requirement.
+
+Additionally it is recommended a serial monitor is recommended.
+
+### Example Commands
 ```sh
+
+
 # Simulate default config (k=4, all blocks M=2)
 make sim
 
@@ -49,10 +63,23 @@ make combined SERIAL_PORT=/dev/ttyUSB1
 # Single-configuration combined run
 make combined LOA_K=4 M0_APPROX=0 M1_APPROX=5 M2_APPROX=5 M3_APPROX=5 SERIAL_PORT=/dev/ttyUSB1
 ```
+## Repository Contents
 
----
+```raw
+group8/
+  rtl/          Verilog RTL
+  tb/           Testbenches
+  sw/           Firmware headers and benchmark
+  scripts/      Automation scripts
+picorv32/
+  picosoc/      SoC build for iCEBreaker
+results/        Saved sweep results and Pareto analysis
+build/          Generated artefacts
+Makefile        Root automation
+```
 
-## Root Makefile Targets
+The folder group8 containts files created by us. picorv32 contains [YosysHQ's picorv32](https://github.com/YosysHQ/picorv32?tab=readme-ov-file) soft-core processor.
+### Root Makefile Targets
 
 | Target | Description |
 |--------|-------------|
@@ -61,10 +88,12 @@ make combined LOA_K=4 M0_APPROX=0 M1_APPROX=5 M2_APPROX=5 M3_APPROX=5 SERIAL_POR
 | `synth` | Synthesise `approx_mul16_loa` with Yosys (generic technology) |
 | `sim_sweep` | Run `sim_sweep.py` — metric simulation for all 32 configs |
 | `synth_sweep` | Run `synth_sweep.py` — Yosys synthesis for all 32 configs |
-| `combined` | Run `analyze_combined.py` — full sweep with PnR and board benchmark |
+| `combined` | Run `analyze_combined.py` — full sweep with PnR and board benchmark* |
 | `clean` | Delete `build/` |
 
-### Key Variables
+*Note that make combined requires a connected iCEBreaker FPGA.
+
+#### Key Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -80,14 +109,31 @@ make combined LOA_K=4 M0_APPROX=0 M1_APPROX=5 M2_APPROX=5 M3_APPROX=5 SERIAL_POR
 | `TOP` | `approx_mul16_loa` | Synthesis top module |
 
 When `LOA_K` / `M*_APPROX` are not set on the command line, `make combined` sweeps all 32 configurations and writes `build/combined_analysis/combined32.csv`. If any of those variables are set, it runs a single configuration and writes `build/combined_analysis/combined.csv`.
+### RTL Structure (`group8/rtl/`)
 
----
+The design is built bottom up from single exact or approximate partial product . A list of the RTL files can be seen below.
 
-## RTL Structure (`group8/rtl/`)
+The lowest level blocks are
+- `ppu_block.v`: Provides exact PPU1 (single full adder) and PPU2 (two stacked PPU1) Cells. These are used for the high-significance columns of each 8 ×4 partial-product array where no approximation is applied according to the multiplier configuration. 
+- `va_block.v`: The VA cell is the defining approximation method for the first recombination row. Its output is the XOR of two adjacent partial products (ai·bi ⊕aj·bj ), discarding the carry-in. 
+- `v2_block.v`: The V2 cell is used in partial-product rows 2 and 3. It simplifies the adder logic by removing upward carry propagation and using approximate sum generation instead of exact XOR logic.
 
-The design is built bottom-up:
+These blocks are used to build the 8x4-multiplier inside v2_8x4_mutliplier. The number of used v2_blocks can be configured by the APPROX parameter.
 
-```
+In `v2_8x8_multiplier.v` the two 8x4-multiplier form a 8x8-multiplier. Group A contains the lower bits and group B the upper bits. The accumulation uses a Lower-part OR Adder (LOA). This multiplier can be configured using `APPROX_GROUP_A`, `APPROX_GROUP_B` and `APROX_LOA`.
+
+The 8x4- and 8x8-multiplier are also available as `e` variants, which represent exact submultipliers.
+
+The top-level 16x16 multiplier module decomposes the multiplication into four 8x8 partial products corresponding to the HH, HL, LH, and LL multiplication regions. Each submultiplier can either use an approximate or exact implementation depending on the selected configuration parameters. The partial products are recombined using simplified carry-less addition.
+
+`picorv32_pcpi_mul16_approx.v` wraps the 16x16 multiplier in the picorv32's PCPI interface. It can be configured using these parameters:
+
+- `LOA_K` (4,6): determines how many bits the LOA-adder approximates
+- `M0_APPROX`, `M1_APPROX`, `M2_APPROX`, `M3_APPROX` (1,2,3,4,5,6): determines the degree of approximation of the 4 8x8 multipliers inside the coprocessor. M0 handles the most signicant bits while M4 handles the least significant bits.
+
+This is the list of RTL-files:
+
+```raw
 va_block.v              VA approximate cell (row 1: zero carry, XOR sum)
 v2_block.v              V2 approximate cell (rows 2–3: zero upward carry, AND-OR sum)
 ppu_block.v             Exact PPU1/PPU2 full-adder cells
@@ -106,12 +152,8 @@ approx_mul16_loa_k6.v   Fixed-K=6 wrapper
 
 picorv32_pcpi_mul16_approx.v   PicoRV32 PCPI coprocessor (1-cycle latency)
 ```
-
-The 16×16 product is decomposed schoolbook-style into four 8×8 sub-products recombined with carry-less byte-slice addition (intentional approximation). Each sub-product uses `v2_8x8` when `M_APPROX > 0`, or `e_8x8` when `M_APPROX = 0`.
-
 ---
-
-## Automation Scripts (`group8/scripts/`)
+### Automation Scripts (`group8/scripts/`)
 
 | Script | Output |
 |--------|--------|
@@ -121,42 +163,30 @@ The 16×16 product is decomposed schoolbook-style into four 8×8 sub-products re
 | `pareto_front.py` | `results/pareto_front.png`, `results/pareto_front.csv` — Pareto analysis |
 
 ---
+### Software (`group8/sw/`)
 
-## Software (`group8/sw/`)
+The approximate multiplier can be accessed by importing the mul16.h and invoking the `mul16(a, b)` function.
 
-`mul16.h` — defines `mul16(a, b)` as an inline custom instruction:
+The file `mul16.h` — defines `mul16(a, b)` as an inline custom instruction:
 
 ```c
 .insn r 0x0b, 0, 42, rd, rs1, rs2   // opcode=0x0b, funct3=0, funct7=42
 ```
 
-`mul16_bench.c` (`BOARD_APP=bench`) — runs 100 multiplications, prints:
 
-```
+The example `mul16_bench.c` (`BOARD_APP=bench`) — runs 100 multiplications, prints:
+
+```raw
 iters=0x0064 cycles=0x<hex> checksum=0x<hex>
 BENCH_DONE
 ```
 
-`mul16_demo.c` (`BOARD_APP=demo`) — interactive UART demo.
+The example `mul16_demo.c` (`BOARD_APP=demo`) — interactive UART demo.
 
 ---
-
-## PCPI Custom Instruction
-
-| Field | Value |
-|-------|-------|
-| opcode | `0x0b` (custom-0) |
-| funct3 | `0` |
-| funct7 | `42` |
-| rs1 | 16-bit operand A |
-| rs2 | 16-bit operand B |
-| rd | 32-bit approximate product |
-| Latency | 1 clock cycle (`pcpi_wait = 0`) |
-
----
-
 ## SoC Build (`picorv32/picosoc/`)
 
+To build the core with the approximate multiplier use these commands:
 ```sh
 # Full SoC flow (synthesis → PnR → bitstream)
 make -C picorv32/picosoc all LOA_K=4 M0_APPROX=0 M1_APPROX=5 M2_APPROX=5 M3_APPROX=5 BOARD_APP=bench
@@ -167,6 +197,15 @@ make -C picorv32/picosoc prog_bram LOA_K=4 M0_APPROX=0 M1_APPROX=5 M2_APPROX=5 M
 # SoC simulation
 make -C picorv32/picosoc sim LOA_K=4 M0_APPROX=0 M1_APPROX=5 M2_APPROX=5 M3_APPROX=5 BOARD_APP=bench
 ```
+### PCPI Custom Instruction
 
----
+| Field | Value |
+|-------|-------|
+| opcode | `0x0b` (custom-0) |
+| funct3 | `0` |
+| funct7 | `42` |
+| rs1 | 16-bit operand A |
+| rs2 | 16-bit operand B |
+| rd | 32-bit approximate product |
+| Latency | 1 clock cycle (`pcpi_wait = 0`) |
 
