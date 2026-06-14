@@ -163,7 +163,7 @@ def _match(text: str, pattern: str) -> str:
     return m.group(1) if m else ""
 
 
-def capture_board_uart(root: Path, port: str, baud: int, timeout_s: float, picosoc_args: list[str]) -> str:
+def capture_board_uart(root: Path, port: str, baud: int, picosoc_args: list[str]) -> str:
     cmd_prog = ["make", "-C", "picorv32/picosoc", "prog_bram", *picosoc_args]
     capture_path = root / "build" / "combined_analysis" / "uart_capture.txt"
     capture_path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,7 +205,7 @@ def simulate_bench(root: Path, picosoc_args: list[str]) -> str:
     return "".join(chars)
 
 
-def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples: int, board: bool, serial_port: str, baud: int, timeout_s: float) -> dict[str, str]:
+def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples: int, board: bool, serial_port: str, baud: int) -> dict[str, str]:
     make_args = [
         f"LOA_K={k}",
         f"M0_APPROX={m0}",
@@ -235,7 +235,7 @@ def analyze_one(root: Path, k: int, m0: int, m1: int, m2: int, m3: int, samples:
 
     bench_mode = "board" if board else "simulation"
     if board:
-        bench_text = capture_board_uart(root, serial_port, baud, timeout_s, picosoc_args)
+        bench_text = capture_board_uart(root, serial_port, baud, picosoc_args)
         print(" START UART OUTPUT HERE")
         print(bench_text)
         print(" END UART OUTPUT HERE")
@@ -288,7 +288,6 @@ def main() -> None:
     parser.add_argument("--board", action="store_true", help="run real board benchmark over UART")
     parser.add_argument("--serial-port", default="/dev/ttyUSB0")
     parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--timeout", type=float, default=20.0)
     parser.add_argument("--output", default="build/combined_analysis/combined.csv")
     parser.add_argument("--all", action="store_true", help="run the combined analysis for all 32 configurations")
     args = parser.parse_args()
@@ -312,10 +311,10 @@ def main() -> None:
                 "config_label": cfg_text,
                 "version": version,
             }
-            row.update(analyze_one(root, k, m0, m1, m2, m3, args.samples, args.board, args.serial_port, args.baud, args.timeout))
+            row.update(analyze_one(root, k, m0, m1, m2, m3, args.samples, args.board, args.serial_port, args.baud))
             rows.append(row)
     else:
-        rows.append(analyze_one(root, args.k, args.m0, args.m1, args.m2, args.m3, args.samples, args.board, args.serial_port, args.baud, args.timeout))
+        rows.append(analyze_one(root, args.k, args.m0, args.m1, args.m2, args.m3, args.samples, args.board, args.serial_port, args.baud))
 
     fieldnames = list(rows[0].keys())
     for row in rows[1:]:
